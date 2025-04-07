@@ -8,114 +8,196 @@ import {
   ListItemText,
   Grid,
   Paper,
+  ListItemIcon,
+  alpha,
 } from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import SchoolIcon from '@mui/icons-material/School';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import SettingsIcon from '@mui/icons-material/Settings';
+import { styled } from '@mui/material/styles';
+
+const StyledListItem = styled(ListItem)(({ theme }) => ({
+  borderRadius: 12,
+  marginBottom: 8,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+  },
+  '&.Mui-selected': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+    '&:hover': {
+      backgroundColor: alpha(theme.palette.primary.main, 0.3),
+    },
+  },
+}));
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  borderRadius: 16,
+  backgroundColor: alpha(theme.palette.background.paper, 0.8),
+  backdropFilter: 'blur(10px)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.01)',
+    boxShadow: theme.shadows[4],
+  },
+}));
 
 const tutorials = {
   'Getting Started': [
-    { title: 'Introduction', path: '/tutorials/introduction' },
-    { title: 'How do I write a simple prompt?', path: '/tutorials/simple-prompt' },
-    { title: 'Custom Mode: How do I write a Style Prompt?', path: '/tutorials/style-prompt' },
-    { title: 'How to Extend and Recreate Music', path: '/tutorials/extend-recreate' }
+    { title: 'Introduction to AI Song Generator', path: '/tutorials/introduction' },
+    { title: 'Writing Your First Simple Prompt', path: '/tutorials/simple-prompt' },
+    { title: 'Mastering Custom Mode Style Prompts', path: '/tutorials/style-prompt' },
+    { title: 'Extending and Recreating Songs', path: '/tutorials/extend-recreate' }
   ],
-  'Metatags': [
-    { title: 'Verse and Chorus', path: '/tutorials/verse-chorus' },
+  'Advanced Features': [
+    { title: 'Understanding Music Styles', path: '/tutorials/music-styles' },
+    { title: 'Working with Vocals', path: '/tutorials/vocals' },
+    { title: 'Instrumental Mode Tips', path: '/tutorials/instrumental' },
+    { title: 'Genre Mixing Techniques', path: '/tutorials/genre-mixing' }
+  ],
+  'Song Structure': [
+    { title: 'Verse and Chorus Creation', path: '/tutorials/verse-chorus' },
     { title: 'Pre-chorus and Bridge', path: '/tutorials/pre-chorus-bridge' },
     { title: 'Song Structure Tags', path: '/tutorials/song-structure' },
-    { title: 'Instrumental Tags', path: '/tutorials/instrumental-tags' }
+    { title: 'Instrumental Sections', path: '/tutorials/instrumental-sections' }
   ],
-  'Style and Lyrics': [
-    { title: 'Styles and genres', path: '/tutorials/styles-genres' },
-    { title: 'Should my Style Prompt use commas?', path: '/tutorials/style-prompt-commas' }
+  'Best Practices': [
+    { title: 'Writing Effective Prompts', path: '/tutorials/effective-prompts' },
+    { title: 'Optimizing Song Quality', path: '/tutorials/quality' },
+    { title: 'Common Mistakes to Avoid', path: '/tutorials/mistakes' },
+    { title: 'Pro Tips and Tricks', path: '/tutorials/pro-tips' }
   ]
 };
 
-const TutorialContent = {
-  'style-prompt': {
-    title: 'Custom Mode: How do I write a Style Prompt?',
+const tutorialContent = {
+  'introduction': {
+    title: 'Introduction to AI Song Generator',
     content: [
       {
-        subtitle: 'Custom Mode',
-        text: 'Custom Mode splits the text prompts into 2 panels, a Lyric and a Style of Music prompt.'
+        subtitle: 'Welcome to AI Song Generator',
+        text: 'Learn how to create professional-quality songs using our AI-powered platform. No musical experience required!'
       },
       {
-        subtitle: 'The Lyrics box will hold around 2000 characters.',
-        text: ''
+        subtitle: 'What You\'ll Learn',
+        text: '• How to use Simple and Custom modes\n• Writing effective prompts\n• Understanding music styles\n• Creating your first AI song'
+      }
+    ]
+  },
+  'style-prompt': {
+    title: 'Mastering Custom Mode Style Prompts',
+    content: [
+      {
+        subtitle: 'Understanding Style Prompts',
+        text: 'Style prompts are the key to controlling how your AI-generated music sounds. Learn how to craft the perfect prompt for your desired musical style.'
       },
       {
-        subtitle: 'How do I control the style of music?',
-        text: 'Style of Music isn\'t just the music\'s genre, it also includes the mood and sub-genre descriptions, instruments, and vocal tags. It might be very simple, or a comma-separated list.'
+        subtitle: 'Components of a Style Prompt',
+        text: '1. Genre (e.g., Pop, Rock, Jazz)\n2. Mood (e.g., Happy, Melancholic)\n3. Instruments\n4. Vocal style\n5. Tempo and rhythm'
       },
       {
-        subtitle: 'Examples:',
-        text: [
-          'Sultry RnB',
-          'Upbeat Country, Female vocal',
-          'Mississippi Blues, sparse harmonica, acoustic guitar, stomp',
-          'bittersweet Hindustani Electro-pop, melodic sarad, ornamental singing'
-        ].join('\n')
+        subtitle: 'Example Prompts',
+        text: 'Here are some effective style prompt examples:\n\n• "Upbeat pop song with female vocals and acoustic guitar"\n• "Dark electronic beats with heavy bass and atmospheric synths"\n• "Jazz fusion with smooth saxophone and piano solos"'
       },
       {
-        subtitle: 'The Style of Music box will hold around 120 characters.',
-        text: ''
-      },
-      {
-        subtitle: 'Less Is More:',
-        text: 'As a general rule, very short prompts seem to create the cleanest audio quality, when the creative details are left up to the AI.\n\nIn contrast, mashing-up genres and long detailed prompts of specific instruments and styles are more likely to suffer from poor audio quality.'
+        subtitle: 'Tips for Better Results',
+        text: '• Keep prompts clear and specific\n• Use musical terminology when possible\n• Combine different elements thoughtfully\n• Start simple and iterate'
       }
     ]
   }
+  // Add more tutorial content as needed
 };
 
 const Tutorials = () => {
-  const [selectedTutorial, setSelectedTutorial] = React.useState('style-prompt');
+  const [selectedTutorial, setSelectedTutorial] = React.useState('introduction');
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      minHeight: '100vh', 
+      bgcolor: 'background.default',
+      p: 3,
+      gap: 3
+    }}>
       {/* Left Sidebar */}
-      <Box sx={{ width: 280, borderRight: 1, borderColor: 'divider', p: 2 }}>
+      <StyledPaper elevation={3} sx={{ width: 320, p: 2 }}>
         {Object.entries(tutorials).map(([category, items]) => (
-          <Box key={category} sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+          <Box key={category} sx={{ mb: 4 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                mb: 2, 
+                color: 'primary.main',
+                fontWeight: 600,
+                fontSize: '1.1rem'
+              }}
+            >
               {category}
             </Typography>
             <List dense disablePadding>
               {items.map((item) => (
-                <ListItem
+                <StyledListItem
                   key={item.title}
                   button
-                  selected={selectedTutorial === item.path.split('/').pop()}
-                  onClick={() => setSelectedTutorial(item.path.split('/').pop())}
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    '&.Mui-selected': {
-                      bgcolor: 'primary.main',
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: 'primary.dark',
-                      },
-                    },
-                  }}
+                  selected={selectedTutorial === item.path.split('/')[2]}
+                  onClick={() => setSelectedTutorial(item.path.split('/')[2])}
                 >
-                  <ListItemText primary={item.title} />
-                </ListItem>
+                  <ListItemIcon>
+                    <PlayArrowIcon color={selectedTutorial === item.path.split('/')[2] ? 'primary' : 'inherit'} />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.title}
+                    primaryTypographyProps={{
+                      sx: {
+                        fontWeight: selectedTutorial === item.path.split('/')[2] ? 600 : 400
+                      }
+                    }}
+                  />
+                </StyledListItem>
               ))}
             </List>
           </Box>
         ))}
-      </Box>
+      </StyledPaper>
 
       {/* Main Content */}
-      <Box sx={{ flex: 1, p: 4 }}>
-        {TutorialContent[selectedTutorial] && (
+      <StyledPaper elevation={3} sx={{ flex: 1, p: 4 }}>
+        {tutorialContent[selectedTutorial] && (
           <>
-            <Typography variant="h4" gutterBottom>
-              {TutorialContent[selectedTutorial].title}
+            <Typography 
+              variant="h4" 
+              gutterBottom
+              sx={{
+                background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: 700,
+                mb: 4
+              }}
+            >
+              {tutorialContent[selectedTutorial].title}
             </Typography>
-            {TutorialContent[selectedTutorial].content.map((section, index) => (
-              <Box key={index} sx={{ mb: 4 }}>
+            {tutorialContent[selectedTutorial].content.map((section, index) => (
+              <Box 
+                key={index} 
+                sx={{ 
+                  mb: 4,
+                  '&:hover': {
+                    transform: 'translateX(4px)',
+                    transition: 'transform 0.3s ease'
+                  }
+                }}
+              >
                 {section.subtitle && (
-                  <Typography variant="h6" gutterBottom>
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom
+                    sx={{
+                      color: 'primary.main',
+                      fontWeight: 600
+                    }}
+                  >
                     {section.subtitle}
                   </Typography>
                 )}
@@ -127,6 +209,8 @@ const Tutorials = () => {
                       whiteSpace: 'pre-wrap',
                       fontFamily: 'inherit',
                       mb: 2,
+                      lineHeight: 1.8,
+                      color: 'text.secondary'
                     }}
                   >
                     {section.text}
@@ -136,7 +220,7 @@ const Tutorials = () => {
             ))}
           </>
         )}
-      </Box>
+      </StyledPaper>
     </Box>
   );
 };
