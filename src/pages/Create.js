@@ -29,14 +29,16 @@ const Create = () => {
   const [isPublic, setIsPublic] = useState(true);
   const [description, setDescription] = useState('');
   const [activeCategory, setActiveCategory] = useState('Genre');
+  const [showAllTags, setShowAllTags] = useState(false);
 
   const genres = [
-    'Joy', 'Sadness', 'Anger', 'Fear', 'Surprise', 'Anticipation', 'Calmness', 'Romantic',
-    'Nostalgia', 'Mystery', 'Triumph', 'Despair', 'Soulful and Lively Atmosphere', 'slow sad',
-    'emotional', 'soulful', 'breakdown', 'sophisticated', 'sharp', 'crisp', 'Spunky',
-    'seductive', 'mysterious', 'relaxed', 'laid-back', 'high tension', 'slow', 'trip-hop', 'tender',
-    'melodic', 'trance', 'danceable', 'progressive', 'fast tempo', 'Melancholy', 'ear candy',
-    'future', 'syncopation', 'catchy', 'depressive', 'night-lovingscene'
+    'Pop', 'Indie Pop', 'Rock', 'Classic Rock', 'Jazz', 'Cool Jazz', 'Traditional Folk',
+    'Neo Folk', 'Bluegrass', 'Country', 'Hip Hop', 'R&B', 'Electronic', 'Classical',
+    'Blues', 'Soul', 'Funk', 'Reggae', 'Metal', 'Punk', 'Alternative',
+    'Ambient', 'Techno', 'House', 'Trap', 'Latin', 'World Music', 'Gospel',
+    'Opera', 'Chamber Music', 'Symphony', 'Experimental', 'Indie Rock', 'Post-Rock',
+    'Dream Pop', 'Shoegaze', 'Psychedelic', 'Progressive Rock', 'Hard Rock', 'Grunge',
+    'Heavy Metal', 'Death Metal', 'Black Metal', 'Doom Metal', 'Folk Metal'
   ];
 
   const voices = [
@@ -78,6 +80,14 @@ const Create = () => {
       default:
         return [];
     }
+  };
+
+  const getVisibleTags = () => {
+    const currentTags = getTagList();
+    if (activeCategory === 'Genre' && !showAllTags) {
+      return currentTags.slice(0, 10); // Only show first 10 genres initially
+    }
+    return currentTags;
   };
 
   return (
@@ -216,7 +226,7 @@ const Create = () => {
 
                 <Box sx={{ mb: 3, maxHeight: '200px', overflowY: 'auto' }}>
                   <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                    {getTagList().map((tag) => (
+                    {getVisibleTags().map((tag) => (
                       <Chip
                         key={tag}
                         label={tag}
@@ -230,6 +240,19 @@ const Create = () => {
                         }}
                       />
                     ))}
+                    {activeCategory === 'Genre' && !showAllTags && (
+                      <Chip
+                        label="Show More"
+                        onClick={() => setShowAllTags(true)}
+                        sx={{
+                          bgcolor: '#2A2A2A',
+                          color: '#8E2DE2',
+                          '&:hover': {
+                            bgcolor: '#3A3A3A',
+                          },
+                        }}
+                      />
+                    )}
                   </Stack>
                 </Box>
 

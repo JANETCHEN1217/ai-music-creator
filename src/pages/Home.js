@@ -124,55 +124,61 @@ const Home = () => {
             What Our Users Say About AI Song Maker
           </Typography>
 
-          <Grid container spacing={4} justifyContent="center">
-            <Grid item xs={12} md={8}>
-              <Paper
-                elevation={3}
-                sx={{
-                  p: 4,
-                  position: 'relative',
-                  '&:before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: 4,
-                    background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
-                  },
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                  <Avatar
-                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                    sx={{ width: 64, height: 64, mr: 2 }}
-                  />
-                  <Box>
-                    <Typography variant="h6">Sarah Johnson</Typography>
-                    <Rating value={5} readOnly />
+          <Grid container spacing={4}>
+            {[
+              {
+                name: "Sarah Johnson",
+                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+                rating: 5,
+                text: "Created a personalized birthday song in minutes! My daughter's face lit up when she heard her custom song. Pure magic! ✨"
+              },
+              {
+                name: "Mike Chen",
+                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
+                rating: 5,
+                text: "From idea to finished song in 5 minutes. The quality is unbelievable - sounds like a professional studio production! 🎵"
+              },
+              {
+                name: "Emma Davis",
+                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma",
+                rating: 5,
+                text: "Made a wedding song for my sister. Everyone thought we hired a composer. This AI is revolutionary! 💍"
+              }
+            ].map((review, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 3,
+                    height: '100%',
+                    position: 'relative',
+                    '&:before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 4,
+                      background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Avatar
+                      src={review.avatar}
+                      sx={{ width: 48, height: 48, mr: 2 }}
+                    />
+                    <Box>
+                      <Typography variant="h6">{review.name}</Typography>
+                      <Rating value={review.rating} readOnly size="small" />
+                    </Box>
                   </Box>
-                </Box>
-                <Box sx={{ display: 'flex', mb: 2 }}>
-                  <FormatQuoteIcon 
-                    sx={{ 
-                      fontSize: 40, 
-                      color: 'primary.main',
-                      transform: 'rotate(180deg)',
-                      mr: 2 
-                    }} 
-                  />
-                </Box>
-                <Typography variant="body1" paragraph>
-                  I used AI Song Maker to create a personalized birthday song for my daughter's 5th birthday. 
-                  The AI understood exactly what I wanted - a cheerful, fun melody with her name in it. 
-                  The result was amazing! My daughter's face lit up when she heard her custom birthday song. 
-                  It made her celebration truly special and unique. I never thought creating a custom song could be this easy!
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <FormatQuoteIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-                </Box>
-              </Paper>
-            </Grid>
+                  <Typography variant="body1" color="text.secondary">
+                    {review.text}
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
           </Grid>
 
           {/* Trust Indicators */}
