@@ -6,16 +6,19 @@ import {
   Typography,
   Button,
   IconButton,
+  Box,
   Menu,
   MenuItem,
-  Box,
-  Avatar,
+  Select,
+  Stack,
 } from '@mui/material';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [language, setLanguage] = useState('English');
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -25,15 +28,19 @@ const Navbar = () => {
     setAnchorEl(null);
   };
 
+  const handleLanguageChange = (event) => {
+    setLanguage(event.target.value);
+  };
+
   return (
-    <AppBar position="static" color="default" elevation={1}>
+    <AppBar position="sticky" color="transparent" elevation={0} sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
       <Toolbar>
         <IconButton
           edge="start"
           color="inherit"
-          aria-label="menu"
           component={RouterLink}
           to="/"
+          sx={{ mr: 2 }}
         >
           <MusicNoteIcon sx={{ color: 'primary.main' }} />
         </IconButton>
@@ -42,30 +49,54 @@ const Navbar = () => {
           component={RouterLink}
           to="/"
           sx={{
-            flexGrow: 1,
             textDecoration: 'none',
             color: 'text.primary',
-            fontWeight: 'bold',
+            fontWeight: 600,
+            mr: 4,
           }}
         >
           AI Music Creator
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            component={RouterLink}
-            to="/create"
-            color="primary"
-            variant="contained"
-          >
-            Create Music
+
+        {/* Navigation Links */}
+        <Stack direction="row" spacing={2} sx={{ flexGrow: 1 }}>
+          <Button color="inherit" component={RouterLink} to="/home">
+            Home
           </Button>
-          <Button
-            component={RouterLink}
-            to="/my-music"
-            color="inherit"
-          >
-            My Music
+          <Button color="inherit" component={RouterLink} to="/create">
+            Create
           </Button>
+          <Button color="inherit" component={RouterLink} to="/pricing">
+            Pricing
+          </Button>
+          <Button color="inherit" component={RouterLink} to="/my-songs">
+            My Songs
+          </Button>
+          <Button color="inherit" component={RouterLink} to="/tutorials">
+            Tutorials
+          </Button>
+        </Stack>
+
+        {/* Right Side Controls */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Select
+            value={language}
+            onChange={handleLanguageChange}
+            variant="standard"
+            sx={{ 
+              color: 'text.secondary',
+              '&:before': { borderColor: 'transparent' },
+              '&:after': { borderColor: 'transparent' },
+            }}
+          >
+            <MenuItem value="English">English</MenuItem>
+            <MenuItem value="中文">中文</MenuItem>
+          </Select>
+          
+          <IconButton color="inherit">
+            <DarkModeIcon />
+          </IconButton>
+
           <IconButton
             onClick={handleMenu}
             color="inherit"
@@ -76,6 +107,14 @@ const Navbar = () => {
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
           >
             <MenuItem onClick={handleClose}>Profile</MenuItem>
             <MenuItem onClick={handleClose}>Settings</MenuItem>

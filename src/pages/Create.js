@@ -3,181 +3,177 @@ import {
   Box,
   Container,
   Typography,
-  Grid,
-  Card,
-  CardContent,
   TextField,
   Button,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Slider,
-  CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  Card,
+  CardContent,
+  Stack,
+  Chip,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import SaveIcon from '@mui/icons-material/Save';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 const Create = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [musicStyle, setMusicStyle] = useState('pop');
-  const [duration, setDuration] = useState(30);
-  const [mood, setMood] = useState('happy');
-  const [description, setDescription] = useState('');
+  const [mode, setMode] = useState('custom');
+  const [isInstrumental, setIsInstrumental] = useState(false);
+  const [songTitle, setSongTitle] = useState('');
+  const [songStyle, setSongStyle] = useState('');
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 3000);
+  const handleModeChange = (event, newMode) => {
+    if (newMode !== null) {
+      setMode(newMode);
+    }
   };
 
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleSave = () => {
-    // Implement save functionality
-    console.log('Saving music...');
+  const handleInstrumentalChange = (event) => {
+    setIsInstrumental(event.target.checked);
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Create New Music
-      </Typography>
-      
-      <Grid container spacing={4}>
-        {/* Controls Section */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ mb: 4 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Music Settings
-              </Typography>
-              
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Music Style</InputLabel>
-                <Select
-                  value={musicStyle}
-                  label="Music Style"
-                  onChange={(e) => setMusicStyle(e.target.value)}
-                >
-                  <MenuItem value="pop">Pop</MenuItem>
-                  <MenuItem value="rock">Rock</MenuItem>
-                  <MenuItem value="classical">Classical</MenuItem>
-                  <MenuItem value="electronic">Electronic</MenuItem>
-                  <MenuItem value="jazz">Jazz</MenuItem>
-                </Select>
-              </FormControl>
+    <Box sx={{ 
+      minHeight: '90vh',
+      bgcolor: 'background.default',
+      pt: 8,
+      pb: 6,
+    }}>
+      <Container maxWidth="lg">
+        <Typography
+          variant="h1"
+          align="center"
+          color="text.primary"
+          gutterBottom
+          sx={{
+            mb: 4,
+            background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          Professional AI Song Generator
+        </Typography>
 
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Mood</InputLabel>
-                <Select
-                  value={mood}
-                  label="Mood"
-                  onChange={(e) => setMood(e.target.value)}
-                >
-                  <MenuItem value="happy">Happy</MenuItem>
-                  <MenuItem value="sad">Sad</MenuItem>
-                  <MenuItem value="energetic">Energetic</MenuItem>
-                  <MenuItem value="relaxed">Relaxed</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Typography gutterBottom>Duration (seconds)</Typography>
-              <Slider
-                value={duration}
-                onChange={(e, newValue) => setDuration(newValue)}
-                min={15}
-                max={120}
-                step={15}
-                valueLabelDisplay="auto"
-                sx={{ mb: 3 }}
-              />
-
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the music you want to create..."
-                sx={{ mb: 3 }}
-              />
-
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                sx={{ mb: 2 }}
-              >
-                {isGenerating ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  'Generate Music'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Preview Section */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Preview
-              </Typography>
-              
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {[1, 2, 3, 4, 5, 6].map((avatar) => (
               <Box
+                key={avatar}
+                component="img"
+                src={`/avatars/avatar${avatar}.jpg`}
+                alt={`User ${avatar}`}
                 sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  minHeight: '200px',
-                  bgcolor: 'background.default',
-                  borderRadius: 1,
-                  mb: 3,
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  border: '2px solid white',
+                  marginLeft: '-8px',
+                  '&:first-of-type': { marginLeft: 0 },
                 }}
-              >
-                {isGenerating ? (
-                  <CircularProgress />
-                ) : (
-                  <Typography color="text.secondary">
-                    Generated music will appear here
-                  </Typography>
-                )}
-              </Box>
+              />
+            ))}
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+              Trusted by 25,000+ musicians, content creators, and music enthusiasts worldwide
+            </Typography>
+          </Box>
+        </Box>
 
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-                  onClick={handlePlayPause}
-                  disabled={isGenerating}
-                >
-                  {isPlaying ? 'Pause' : 'Play'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSave}
-                  disabled={isGenerating}
-                >
-                  Save
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Container>
+        <Card sx={{ maxWidth: 800, mx: 'auto', mt: 4, bgcolor: 'background.paper' }}>
+          <CardContent>
+            <Typography variant="h5" gutterBottom align="center">
+              Create Music
+            </Typography>
+
+            <Box sx={{ mb: 3 }}>
+              <ToggleButtonGroup
+                value={mode}
+                exclusive
+                onChange={handleModeChange}
+                aria-label="creation mode"
+                fullWidth
+              >
+                <ToggleButton value="custom" aria-label="custom mode">
+                  Custom Mode
+                </ToggleButton>
+                <ToggleButton value="simple" aria-label="simple mode">
+                  Simple Mode
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isInstrumental}
+                  onChange={handleInstrumentalChange}
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>Instrumental Mode</span>
+                  <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                </Box>
+              }
+              sx={{ mb: 3 }}
+            />
+
+            <TextField
+              fullWidth
+              label="Enter song title"
+              value={songTitle}
+              onChange={(e) => setSongTitle(e.target.value)}
+              variant="outlined"
+              sx={{ mb: 3 }}
+              inputProps={{ maxLength: 30 }}
+              helperText={`${songTitle.length}/30`}
+            />
+
+            <TextField
+              fullWidth
+              label="Enter song style"
+              value={songStyle}
+              onChange={(e) => setSongStyle(e.target.value)}
+              variant="outlined"
+              sx={{ mb: 2 }}
+              placeholder="E.g. mexican music, cumbia, male voice"
+              inputProps={{ maxLength: 120 }}
+              helperText={`${songStyle.length}/120`}
+            />
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Style and Genre List
+            </Typography>
+
+            <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
+              <Chip label="Genre" onClick={() => {}} />
+              <Chip label="Moods" onClick={() => {}} />
+              <Chip label="Voices" onClick={() => {}} />
+              <Chip label="Tempos" onClick={() => {}} />
+            </Stack>
+
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Enter song lyrics"
+              variant="outlined"
+              sx={{ mb: 3 }}
+            />
+
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              startIcon={<MusicNoteIcon />}
+            >
+              Generate Music
+            </Button>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   );
 };
 
