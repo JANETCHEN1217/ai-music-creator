@@ -20,6 +20,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import { alpha } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 
 // AI-generated avatar URLs (replace with actual AI-generated avatars)
 const avatars = [
@@ -48,6 +49,51 @@ const steps = [
     icon: <MusicNoteIcon fontSize="large" />,
   },
 ];
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  textAlign: 'center',
+  padding: theme.spacing(4),
+  borderRadius: 24,
+  backgroundColor: alpha(theme.palette.background.paper, 0.8),
+  backdropFilter: 'blur(10px)',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  '&:hover': {
+    transform: 'translateY(-12px)',
+    boxShadow: theme.shadows[8],
+  },
+}));
+
+const StyledIconBox = styled(Box)(({ theme }) => ({
+  width: 80,
+  height: 80,
+  borderRadius: '50%',
+  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: theme.spacing(3),
+  color: 'white',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'rotate(5deg) scale(1.1)',
+  },
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: '12px 32px',
+  fontSize: '1.1rem',
+  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.05)',
+    boxShadow: theme.shadows[8],
+  },
+}));
 
 const Home = () => {
   const navigate = useNavigate();
@@ -136,18 +182,33 @@ const Home = () => {
   ));
 
   return (
-    <Box sx={{ bgcolor: 'background.default' }}>
+    <Box sx={{ 
+      bgcolor: 'background.default',
+      minHeight: '100vh',
+    }}>
       {/* Create Section */}
       <Create />
 
       {/* How to Make Songs Section */}
-      <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
+      <Box 
+        sx={{ 
+          py: 8, 
+          bgcolor: alpha(theme.palette.background.paper, 0.4),
+          backdropFilter: 'blur(10px)',
+        }}
+      >
         <Container maxWidth="lg">
           <Typography
             variant="h3"
             align="center"
             gutterBottom
-            sx={{ mb: 6 }}
+            sx={{
+              mb: 6,
+              fontWeight: 700,
+              background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
           >
             How to Make Songs with AI for Free
           </Typography>
@@ -155,42 +216,32 @@ const Home = () => {
           <Grid container spacing={4}>
             {steps.map((step, index) => (
               <Grid item xs={12} md={4} key={index}>
-                <Card 
-                  sx={{ 
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    p: 3,
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      transition: 'transform 0.3s ease-in-out',
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: '50%',
-                      bgcolor: 'primary.main',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mb: 2,
-                      color: 'white',
+                <StyledCard>
+                  <StyledIconBox>
+                    {step.icon}
+                  </StyledIconBox>
+                  <Typography 
+                    variant="h5" 
+                    gutterBottom
+                    sx={{ 
+                      fontWeight: 600,
+                      background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
                     }}
                   >
-                    {step.icon}
-                  </Box>
-                  <Typography variant="h5" gutterBottom>
                     {step.title}
                   </Typography>
-                  <Typography color="text.secondary">
+                  <Typography 
+                    color="text.secondary"
+                    sx={{ 
+                      lineHeight: 1.8,
+                      opacity: 0.8 
+                    }}
+                  >
                     {step.description}
                   </Typography>
-                </Card>
+                </StyledCard>
               </Grid>
             ))}
           </Grid>
@@ -198,7 +249,13 @@ const Home = () => {
       </Box>
 
       {/* User Testimonials Section */}
-      <Box sx={{ py: 8, bgcolor: alpha(theme.palette.background.paper, 0.4) }}>
+      <Box 
+        sx={{ 
+          py: 8, 
+          bgcolor: alpha(theme.palette.background.default, 0.6),
+          backdropFilter: 'blur(10px)',
+        }}
+      >
         <Container maxWidth="lg">
           <Typography
             variant="h3"
@@ -222,39 +279,66 @@ const Home = () => {
       </Box>
 
       {/* Trust Indicators */}
-      <Box sx={{ mt: 8, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom color="text.secondary">
-          Trusted by 25,000+ musicians and creators worldwide
-        </Typography>
-        <Stack
-          direction="row"
-          spacing={-1}
-          justifyContent="center"
-          sx={{ mt: 2 }}
-        >
-          {avatars.map((avatar, index) => (
-            <Avatar
-              key={index}
-              src={avatar}
-              sx={{
-                width: 48,
-                height: 48,
-                border: '2px solid white',
-                '&:not(:first-of-type)': {
-                  marginLeft: -1,
-                },
-              }}
-            />
-          ))}
-        </Stack>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => navigate('/create')}
-          sx={{ mt: 4 }}
-        >
-          Start Creating Your Song
-        </Button>
+      <Box 
+        sx={{ 
+          py: 8,
+          textAlign: 'center',
+          bgcolor: alpha(theme.palette.background.paper, 0.4),
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <Container maxWidth="lg">
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            sx={{
+              color: alpha(theme.palette.text.secondary, 0.9),
+              fontWeight: 500,
+            }}
+          >
+            Trusted by 25,000+ musicians and creators worldwide
+          </Typography>
+          <Stack
+            direction="row"
+            spacing={-1}
+            justifyContent="center"
+            sx={{ 
+              mt: 3,
+              mb: 4,
+              '&:hover > *': {
+                transform: 'translateY(-8px)',
+              }
+            }}
+          >
+            {avatars.map((avatar, index) => (
+              <Avatar
+                key={index}
+                src={avatar}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  border: '2px solid',
+                  borderColor: 'primary.main',
+                  transition: 'transform 0.3s ease',
+                  '&:not(:first-of-type)': {
+                    marginLeft: -1,
+                  },
+                  '&:hover': {
+                    transform: 'translateY(-16px) scale(1.2) !important',
+                    zIndex: 1,
+                  },
+                }}
+              />
+            ))}
+          </Stack>
+          <StyledButton
+            variant="contained"
+            size="large"
+            onClick={() => navigate('/create')}
+          >
+            Start Creating Your Song
+          </StyledButton>
+        </Container>
       </Box>
     </Box>
   );
