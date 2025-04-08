@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import GoogleLogin from './GoogleLogin';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 const Navbar = () => {
   const { user, login, logout } = useUser();
@@ -32,77 +32,111 @@ const Navbar = () => {
     logout();
   };
 
-  return (
-    <AppBar position="sticky" sx={{ backgroundColor: 'background.paper', boxShadow: 1 }}>
-      <Toolbar>
-        <Typography
-          variant="h6"
-          component={RouterLink}
-          to="/"
-          sx={{
-            flexGrow: 1,
-            textDecoration: 'none',
-            color: 'primary.main',
-            fontWeight: 700,
-            letterSpacing: 1,
-          }}
-        >
-          AI Music Creator
-        </Typography>
+  const handleLogin = () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // try to render prompt in a different way
+          window.google.accounts.id.prompt();
+        }
+      });
+    }
+    handleClose();
+  };
 
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+  return (
+    <AppBar position="sticky" sx={{ backgroundColor: '#111', boxShadow: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+      <Toolbar>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            component={RouterLink}
+            to="/"
+            sx={{
+              textDecoration: 'none',
+              color: 'white',
+              fontWeight: 500,
+              letterSpacing: 0.5,
+              mr: 4,
+            }}
+          >
+            AI Music Creator
+          </Typography>
+
+          <Button
+            component={RouterLink}
+            to="/home"
+            sx={{ color: 'white', textTransform: 'none', mr: 2 }}
+          >
+            Home
+          </Button>
           <Button
             component={RouterLink}
             to="/create"
-            color="primary"
-            sx={{ textTransform: 'none' }}
+            sx={{ color: 'white', textTransform: 'none', mr: 2 }}
           >
             Create
           </Button>
           <Button
             component={RouterLink}
+            to="/pricing"
+            sx={{ color: 'white', textTransform: 'none', mr: 2 }}
+          >
+            Pricing
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/my-songs"
+            sx={{ color: 'white', textTransform: 'none', mr: 2 }}
+          >
+            My Songs
+          </Button>
+          <Button
+            component={RouterLink}
             to="/tutorials"
-            color="primary"
-            sx={{ textTransform: 'none' }}
+            sx={{ color: 'white', textTransform: 'none' }}
           >
             Tutorials
           </Button>
-          
-          {user ? (
-            <>
-              <Tooltip title="Account settings">
-                <IconButton onClick={handleMenu} size="small">
-                  <Avatar
-                    alt={user.name}
-                    src={user.imageUrl}
-                    sx={{ width: 32, height: 32 }}
-                  />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
-                onClick={handleClose}
-              >
-                <MenuItem disabled>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title={user ? "Account settings" : "Sign in"}>
+            <IconButton onClick={handleMenu} size="small" sx={{ color: 'white' }}>
+              {user ? (
+                <Avatar
+                  alt={user.name}
+                  src={user.imageUrl}
+                  sx={{ width: 32, height: 32 }}
+                />
+              ) : (
+                <AccountCircleIcon />
+              )}
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleClose}
+            onClick={handleClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            {user ? (
+              [
+                <MenuItem key="email" disabled>
                   <Typography variant="body2">{user.email}</Typography>
-                </MenuItem>
-                <MenuItem component={RouterLink} to="/profile">Profile</MenuItem>
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
-            </>
-          ) : (
-            <GoogleLogin
-              onSuccess={(userData) => {
-                console.log('Login Success:', userData);
-                login(userData);
-              }}
-              onError={(error) => {
-                console.error('Login Error:', error);
-              }}
-            />
-          )}
+                </MenuItem>,
+                <MenuItem key="profile" component={RouterLink} to="/profile">Profile</MenuItem>,
+                <MenuItem key="settings">Settings</MenuItem>,
+                <MenuItem key="logout" onClick={handleLogout}>Logout</MenuItem>
+              ]
+            ) : (
+              <MenuItem onClick={handleLogin}>
+                Sign in with Google
+              </MenuItem>
+            )}
+          </Menu>
         </Box>
       </Toolbar>
     </AppBar>
