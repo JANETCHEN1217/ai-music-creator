@@ -77,11 +77,32 @@ const tutorialContent = {
     content: [
       {
         subtitle: 'Welcome to AI Song Generator',
-        text: 'Learn how to create professional-quality songs using our AI-powered platform. No musical experience required!'
+        text: 'Welcome to the future of music creation! Our AI Song Generator combines cutting-edge artificial intelligence with intuitive design to help you create professional-quality songs in minutes. Whether you\'re a professional musician or just starting out, our platform makes music creation accessible and enjoyable.'
       },
       {
         subtitle: 'What You\'ll Learn',
-        text: '• How to use Simple and Custom modes\n• Writing effective prompts\n• Understanding music styles\n• Creating your first AI song'
+        text: '• How to use Simple and Custom modes for different creation needs\n• Writing effective prompts that get the results you want\n• Understanding music styles and genre combinations\n• Creating your first AI-generated song\n• Tips for achieving the best possible results'
+      },
+      {
+        subtitle: 'Getting Started',
+        text: 'To begin creating music, simply sign in with your Google account. You\'ll receive free daily credits to generate songs, and you can always upgrade your plan for unlimited access.'
+      }
+    ]
+  },
+  'simple-prompt': {
+    title: 'Writing Your First Simple Prompt',
+    content: [
+      {
+        subtitle: 'Understanding Simple Mode',
+        text: 'Simple Mode is perfect for quick song creation when you have a general idea in mind. It uses natural language processing to understand your description and create a matching song.'
+      },
+      {
+        subtitle: 'Writing Effective Prompts',
+        text: 'Good prompts are clear and specific. Include:\n• The mood you want (happy, sad, energetic)\n• The style or genre (pop, rock, jazz)\n• Any specific instruments you want to hear\n• The tempo or energy level'
+      },
+      {
+        subtitle: 'Example Prompts',
+        text: 'Here are some effective simple prompts:\n\n"A happy pop song with acoustic guitar for a summer beach party"\n\n"A dramatic orchestral piece with powerful drums for an epic movie scene"\n\n"A soft jazz ballad with piano and saxophone for a romantic dinner"'
       }
     ]
   },
@@ -89,24 +110,91 @@ const tutorialContent = {
     title: 'Mastering Custom Mode Style Prompts',
     content: [
       {
-        subtitle: 'Understanding Style Prompts',
-        text: 'Style prompts are the key to controlling how your AI-generated music sounds. Learn how to craft the perfect prompt for your desired musical style.'
+        subtitle: 'Custom Mode Overview',
+        text: 'Custom Mode gives you precise control over your music creation. It separates your input into two main components: Style and Lyrics. This tutorial focuses on crafting effective style prompts.'
       },
       {
-        subtitle: 'Components of a Style Prompt',
-        text: '1. Genre (e.g., Pop, Rock, Jazz)\n2. Mood (e.g., Happy, Melancholic)\n3. Instruments\n4. Vocal style\n5. Tempo and rhythm'
+        subtitle: 'Style Prompt Components',
+        text: '1. Genre: The primary music style (e.g., Pop, Rock, Jazz)\n2. Sub-genre: More specific style variations\n3. Mood: The emotional quality of the music\n4. Instruments: Specific instruments to include\n5. Vocal style: Type of vocals desired\n6. Tempo: Speed and rhythm preferences'
       },
       {
-        subtitle: 'Example Prompts',
-        text: 'Here are some effective style prompt examples:\n\n• "Upbeat pop song with female vocals and acoustic guitar"\n• "Dark electronic beats with heavy bass and atmospheric synths"\n• "Jazz fusion with smooth saxophone and piano solos"'
+        subtitle: 'Advanced Techniques',
+        text: 'Combine elements effectively:\n\n"Cinematic orchestral rock with electric guitar solos and epic choir vocals"\n\n"Lo-fi hip hop with jazzy piano, vinyl crackle, and mellow beats"\n\n"Progressive metal with complex time signatures, heavy distortion, and clean vocal harmonies"'
       },
       {
-        subtitle: 'Tips for Better Results',
-        text: '• Keep prompts clear and specific\n• Use musical terminology when possible\n• Combine different elements thoughtfully\n• Start simple and iterate'
+        subtitle: 'Pro Tips',
+        text: '• Start with the most important elements first\n• Use commas to separate distinct elements\n• Be specific about instrumental elements\n• Consider the overall mood and energy\n• Experiment with genre combinations'
+      }
+    ]
+  },
+  'music-styles': {
+    title: 'Understanding Music Styles',
+    content: [
+      {
+        subtitle: 'Genre Fundamentals',
+        text: 'Each genre has its own characteristics, instruments, and conventions. Understanding these helps you create more authentic-sounding music.'
+      },
+      {
+        subtitle: 'Popular Genres',
+        text: 'Pop: Clean production, catchy melodies, verse-chorus structure\nRock: Guitar-driven, energetic, often with strong drums\nJazz: Complex harmonies, improvisation, swing rhythms\nHip Hop: Beat-focused, rhythmic vocals, bass-heavy\nElectronic: Synthesizers, programmed drums, digital effects'
+      },
+      {
+        subtitle: 'Combining Genres',
+        text: 'Create unique sounds by mixing genres:\n\n• Pop + Jazz = Smooth, sophisticated pop with complex chords\n• Rock + Electronic = Modern rock with synthesizer elements\n• Classical + Hip Hop = Orchestral hip hop with classical samples'
+      }
+    ]
+  },
+  'vocals': {
+    title: 'Working with Vocals',
+    content: [
+      {
+        subtitle: 'Vocal Styles',
+        text: 'Choose from various vocal styles:\n\n• Clean vocals: Clear, professional singing\n• Distorted vocals: Gritty, aggressive sound\n• Harmonies: Multiple vocal layers\n• Spoken word: Rhythmic speaking\n• Choral: Group vocal arrangements'
+      },
+      {
+        subtitle: 'Language and Lyrics',
+        text: 'Our AI can generate vocals in multiple languages and styles. Consider:\n\n• Clarity of pronunciation\n• Emotional delivery\n• Accent and dialect\n• Vocal range and power'
+      },
+      {
+        subtitle: 'Best Practices',
+        text: '• Match vocal style to genre\n• Consider the emotional impact\n• Use appropriate vocal effects\n• Balance vocals with instruments\n• Experiment with backing vocals'
+      }
+    ]
+  },
+  'instrumental': {
+    title: 'Instrumental Mode Tips',
+    content: [
+      {
+        subtitle: 'When to Use Instrumental Mode',
+        text: 'Instrumental mode is perfect for:\n\n• Background music\n• Meditation tracks\n• Video soundtracks\n• Podcast intros\n• Dance music'
+      },
+      {
+        subtitle: 'Crafting Instrumental Arrangements',
+        text: 'Focus on:\n\n• Melody instruments\n• Rhythm section\n• Bass lines\n• Harmonic progression\n• Sound effects and ambience'
+      },
+      {
+        subtitle: 'Advanced Techniques',
+        text: '• Layer multiple instruments\n• Use dynamic changes\n• Create build-ups and breaks\n• Experiment with effects\n• Balance all elements'
+      }
+    ]
+  },
+  'quality': {
+    title: 'Optimizing Song Quality',
+    content: [
+      {
+        subtitle: 'Quality Factors',
+        text: 'Several factors affect the quality of AI-generated music:\n\n• Prompt clarity\n• Style consistency\n• Instrument balance\n• Arrangement complexity\n• Production quality'
+      },
+      {
+        subtitle: 'Common Issues and Solutions',
+        text: '1. Muddy mix: Specify instrument roles clearly\n2. Weak melody: Focus on melodic elements\n3. Poor transitions: Request clear section changes\n4. Inconsistent style: Keep genre elements focused\n5. Overcrowded arrangement: Limit instrument combinations'
+      },
+      {
+        subtitle: 'Quality Optimization Tips',
+        text: '• Start with simple arrangements\n• Build complexity gradually\n• Test different prompt variations\n• Use reference tracks\n• Review and iterate'
       }
     ]
   }
-  // Add more tutorial content as needed
 };
 
 const Tutorials = () => {
