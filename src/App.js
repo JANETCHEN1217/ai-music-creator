@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { UserProvider } from './contexts/UserContext';
 import Home from './pages/Home';
 import Create from './pages/Create';
 import Pricing from './pages/Pricing';
@@ -54,22 +55,24 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <div className="App" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Navbar />
-          <main style={{ flex: 1 }}>
-            <Routes>
-              <Route path="/" element={<Create />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/create" element={<Create />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/my-songs" element={<MyMusic />} />
-              <Route path="/tutorials" element={<Tutorials />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </Router>
+      <UserProvider>
+        <Router>
+          <div className="App" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <Navbar />
+            <main style={{ flex: 1 }}>
+              <Routes>
+                <Route path="/" element={<Create />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/create" element={<Create />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/my-songs" element={<MyMusic />} />
+                <Route path="/tutorials" element={<Tutorials />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </UserProvider>
     </ThemeProvider>
   );
 }
