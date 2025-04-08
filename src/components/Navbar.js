@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   AppBar,
   Box,
@@ -16,7 +16,7 @@ import { useUser } from '../contexts/UserContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 const Navbar = () => {
-  const { user, login, logout } = useUser();
+  const { user, logout } = useUser();
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const handleMenu = (event) => {
@@ -35,11 +35,14 @@ const Navbar = () => {
   const handleLogin = () => {
     if (window.google?.accounts?.id) {
       window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // try to render prompt in a different way
-          window.google.accounts.id.prompt();
+        if (notification.isNotDisplayed()) {
+          console.error('Google Sign-In was not displayed:', notification.getNotDisplayedReason());
+        } else if (notification.isSkippedMoment()) {
+          console.error('Google Sign-In was skipped:', notification.getSkippedReason());
         }
       });
+    } else {
+      console.error('Google Sign-In is not initialized');
     }
     handleClose();
   };
