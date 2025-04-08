@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -15,79 +15,107 @@ import {
   FormControlLabel,
   Tooltip,
   IconButton,
+  CircularProgress,
+  Alert,
+  ButtonGroup,
 } from '@mui/material';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import { musicService } from '../services/musicService';
+import { useUser } from '../contexts/UserContext';
 
 const Create = () => {
+  const { user } = useUser();
   const [mode, setMode] = useState('custom');
   const [isInstrumental, setIsInstrumental] = useState(false);
   const [songTitle, setSongTitle] = useState('');
-  const [songStyle, setSongStyle] = useState('');
+  const [songStyle, setSongStyle] = useState([]);
   const [songLyrics, setSongLyrics] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [description, setDescription] = useState('');
   const [activeCategory, setActiveCategory] = useState('Genre');
   const [showAllTags, setShowAllTags] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [generatedTrack, setGeneratedTrack] = useState(null);
+  const [availableTags, setAvailableTags] = useState({
+    genres: [],
+    moods: [],
+    voices: [],
+    tempos: []
+  });
 
-  const genres = [
-    'Pop', 'Indie Pop', 'Rock', 'Classic Rock', 'Jazz', 'Cool Jazz', 'Traditional Folk',
-    'Neo Folk', 'Bluegrass', 'Country', 'Hip Hop', 'R&B', 'Electronic', 'Classical',
-    'Blues', 'Soul', 'Funk', 'Reggae', 'Metal', 'Punk', 'Alternative',
-    'Ambient', 'Techno', 'House', 'Trap', 'Latin', 'World Music', 'Gospel',
-    'Opera', 'Chamber Music', 'Symphony', 'Experimental', 'Indie Rock', 'Post-Rock',
-    'Dream Pop', 'Shoegaze', 'Psychedelic', 'Progressive Rock', 'Hard Rock', 'Grunge',
-    'Heavy Metal', 'Death Metal', 'Black Metal', 'Doom Metal', 'Folk Metal'
-  ];
+  useEffect(() => {
+    loadTags();
+  }, []);
 
-  const voices = [
-    'Male Voice', 'Female Voice', 'Soprano', 'Coloratura Soprano', 'Soubrette', 'Mezzo-Soprano',
-    'Coloratura Mezzo-Soprano', 'Caberet Mezzo', 'Alto', 'Dramatic Alto', 'Alto Profondo', 'Tenor',
-    'Spinto Tenor', 'Counter-Tenor', 'Baritone', 'Verdi Baritone', 'Baryton-Martin', 'Bass',
-    'Lyric Bass', 'Basso Cantante', 'Gospel Choirs', 'Barbershop Quartets', 'Female emotive voice',
-    'female voice', 'Jamaican slang', 'robotic vocals', 'very robotic vocals', 'female ai',
-    'Clear and melodious voice', 'Rapid-fire rap', 'gentle voice', 'Miku voice', 'Vocaloid',
-    'speck fast', 'Male singer', 'Children\'s Spoken Word', 'Circular Breathing', 'Ingressive Phonation',
-    'Microtonal Singing', 'Beatboxing', 'Throat Singing', 'Vocal Fry', 'Whistle Register',
-    'Shibuya-kei', 'emotional depth vocal', 'vocal add ons', 'muffled voice',
-    'Spanish male sensual voice', 'whispering voice'
-  ];
-
-  const tempos = [
-    '60-80 BPM', '80-120 BPM', '120-160 BPM'
-  ];
-
-  const handleTagClick = (tag) => {
-    setSongStyle((prevStyle) => {
-      const currentTags = prevStyle.split(',').map(t => t.trim()).filter(t => t !== '');
-      if (!currentTags.includes(tag)) {
-        return prevStyle ? `${prevStyle}, ${tag}` : tag;
-      }
-      return prevStyle;
-    });
+  const loadTags = async () => {
+    try {
+      const tags = await musicService.getTags();
+      setAvailableTags({
+        genres: tags.filter(tag => tag.category === 'genre'),
+        moods: tags.filter(tag => tag.category === 'mood'),
+        voices: tags.filter(tag => tag.category === 'voice'),
+        tempos: tags.filter(tag => tag.category === 'tempo')
+      });
+    } catch (error) {
+      console.error('Error loading tags:', error);
+      setError('Failed to load music tags');
+    }
   };
 
-  const getTagList = () => {
+  const handleTagClick = (tag) => {
+    if (songStyle.includes(tag)) {
+      setSongStyle(songStyle.filter(t => t !== tag));
+    } else {
+      setSongStyle([...songStyle, tag]);
+    }
+  };
+
+  const getVisibleTags = () => {
     switch (activeCategory) {
       case 'Genre':
+        return showAllTags ? availableTags.genres : availableTags.genres.slice(0, 12);
       case 'Moods':
-        return genres;
+        return availableTags.moods;
       case 'Voices':
-        return voices;
+        return availableTags.voices;
       case 'Tempos':
-        return tempos;
+        return availableTags.tempos;
       default:
         return [];
     }
   };
 
-  const getVisibleTags = () => {
-    const currentTags = getTagList();
-    if (activeCategory === 'Genre' && !showAllTags) {
-      return currentTags.slice(0, 10); // Only show first 10 genres initially
+  const handleGenerateMusic = async () => {
+    if (!user) {
+      setError('Please sign in to generate music');
+      return;
     }
-    return currentTags;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      const result = await musicService.generateTrack({
+        mode: mode === 'simple' ? 'track' : 'custom',
+        description: mode === 'simple' ? description : undefined,
+        style: songStyle.join(','),
+        isInstrumental,
+        lyrics: mode === 'custom' ? songLyrics : undefined
+      });
+
+      setGeneratedTrack(result);
+      setSuccess(true);
+    } catch (error) {
+      console.error('Error generating music:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -194,8 +222,8 @@ const Create = () => {
                 <TextField
                   fullWidth
                   label="Enter song style"
-                  value={songStyle}
-                  onChange={(e) => setSongStyle(e.target.value)}
+                  value={songStyle.join(', ')}
+                  onChange={(e) => setSongStyle(e.target.value.split(', '))}
                   variant="outlined"
                   sx={{ mb: 2 }}
                   placeholder="E.g. mexican music, cumbia, male voice"
@@ -207,22 +235,19 @@ const Create = () => {
                   Style and Genre List
                 </Typography>
 
-                <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
-                  {['Genre', 'Moods', 'Voices', 'Tempos'].map((category) => (
-                    <Chip
-                      key={category}
-                      label={`# ${category}`}
-                      onClick={() => setActiveCategory(category)}
-                      sx={{
-                        bgcolor: activeCategory === category ? 'primary.main' : '#2A2A2A',
-                        color: 'white',
-                        '&:hover': {
-                          bgcolor: activeCategory === category ? 'primary.dark' : '#3A3A3A',
-                        },
-                      }}
-                    />
-                  ))}
-                </Stack>
+                <Box sx={{ mb: 3 }}>
+                  <ButtonGroup variant="outlined" fullWidth>
+                    {['Genre', 'Moods', 'Voices', 'Tempos'].map((category) => (
+                      <Button
+                        key={category}
+                        onClick={() => setActiveCategory(category)}
+                        variant={activeCategory === category ? 'contained' : 'outlined'}
+                      >
+                        #{category}
+                      </Button>
+                    ))}
+                  </ButtonGroup>
+                </Box>
 
                 <Box sx={{ mb: 3, maxHeight: '200px', overflowY: 'auto' }}>
                   <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
@@ -240,19 +265,6 @@ const Create = () => {
                         }}
                       />
                     ))}
-                    {activeCategory === 'Genre' && !showAllTags && (
-                      <Chip
-                        label="Show More"
-                        onClick={() => setShowAllTags(true)}
-                        sx={{
-                          bgcolor: '#2A2A2A',
-                          color: '#8E2DE2',
-                          '&:hover': {
-                            bgcolor: '#3A3A3A',
-                          },
-                        }}
-                      />
-                    )}
                   </Stack>
                 </Box>
 
@@ -299,11 +311,25 @@ const Create = () => {
               sx={{ mb: 3 }}
             />
 
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            )}
+
+            {success && (
+              <Alert severity="success" sx={{ mb: 3 }}>
+                Your song has been generated successfully!
+              </Alert>
+            )}
+
             <Button
               variant="contained"
               fullWidth
               size="large"
-              startIcon={<MusicNoteIcon />}
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <MusicNoteIcon />}
+              onClick={handleGenerateMusic}
+              disabled={loading || (!description && mode === 'simple') || (!songStyle.length && mode === 'custom')}
               sx={{
                 background: 'linear-gradient(45deg, #8E2DE2, #4A00E0)',
                 '&:hover': {
@@ -311,19 +337,23 @@ const Create = () => {
                 },
               }}
             >
-              Generate with AI
+              {loading ? 'Generating...' : 'Generate with AI'}
             </Button>
 
-            <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
-              2 free generations remaining today
-              <Button
-                color="primary"
-                size="small"
-                sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold' }}
-              >
-                Upgrade Now →
-              </Button>
-            </Typography>
+            {!user && (
+              <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
+                Sign in to start creating AI music
+              </Typography>
+            )}
+
+            {generatedTrack && (
+              <Box sx={{ mt: 3 }}>
+                <audio controls style={{ width: '100%' }}>
+                  <source src={generatedTrack.trackUrl} type="audio/mp3" />
+                  Your browser does not support the audio element.
+                </audio>
+              </Box>
+            )}
           </CardContent>
         </Card>
       </Container>
