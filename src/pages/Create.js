@@ -148,7 +148,8 @@ const Create = () => {
     }}>
       <Container maxWidth="lg">
         <Typography
-          variant="h1"
+          component="h1"
+          variant="h2"
           align="center"
           color="text.primary"
           gutterBottom
@@ -210,6 +211,7 @@ const Create = () => {
             alignItems: { xs: 'center', sm: 'flex-start' }
           }}>
             <Typography 
+              component="h2"
               variant="h6" 
               color="primary"
               sx={{ fontWeight: 600, mb: 0.5 }}
@@ -228,8 +230,12 @@ const Create = () => {
 
         <Card sx={{ maxWidth: 800, mx: 'auto', mt: 4, bgcolor: 'background.paper' }}>
           <CardContent>
-            <Typography variant="h5" gutterBottom align="center">
-              Create Music
+            <Typography 
+              component="h2" 
+              variant="h5"
+              sx={{ mb: 3 }}
+            >
+              Music Generation
             </Typography>
 
             <Box sx={{ mb: 3 }}>
