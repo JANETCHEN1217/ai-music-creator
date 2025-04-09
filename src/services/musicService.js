@@ -37,10 +37,20 @@ class MusicService {
     }
   }
 
+  async getTags() {
+    // 返回预定义的标签，因为我们现在使用静态数据
+    return {
+      genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
+      moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
+      voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
+      tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
+    };
+  }
+
   // 添加其他方法，比如获取生成历史等
   async getMusicHistory() {
     // 实现获取历史记录的逻辑
   }
 }
 
-export default new MusicService(); 
+export const musicService = new MusicService(); 
