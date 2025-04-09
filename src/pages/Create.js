@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Alert,
   ButtonGroup,
+  Slider,
 } from '@mui/material';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -40,11 +41,12 @@ const Create = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [generatedTrack, setGeneratedTrack] = useState(null);
+  const [duration, setDuration] = useState(30);
   const [availableTags, setAvailableTags] = useState({
-    genres: [],
-    moods: [],
-    voices: [],
-    tempos: []
+    Genre: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
+    Moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
+    Voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
+    Tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
   });
 
   useEffect(() => {
@@ -89,34 +91,53 @@ const Create = () => {
     }
   };
 
+  const handleDurationChange = (event, newValue) => {
+    setDuration(newValue);
+  };
+
   const handleGenerateMusic = async () => {
     if (!user) {
       setError('Please sign in to generate music');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-
     try {
-      const result = await musicService.generateTrack({
-        mode: mode === 'simple' ? 'track' : 'custom',
-        description: mode === 'simple' ? description : undefined,
-        style: songStyle.join(','),
-        isInstrumental,
-        lyrics: mode === 'custom' ? songLyrics : undefined
-      });
+      setLoading(true);
+      setError(null);
+      setSuccess(false);
 
-      setGeneratedTrack(result);
-      setSuccess(true);
-    } catch (error) {
-      console.error('Error generating music:', error);
-      setError(error.message);
+      const musicParams = {
+        description: description || songStyle.join(', '),
+        duration: duration,
+        style: songStyle,
+        isInstrumental: isInstrumental,
+        lyrics: mode === 'custom' ? songLyrics : undefined,
+        title: songTitle || 'Untitled',
+      };
+
+      const result = await musicService.generateMusic(musicParams);
+      
+      if (result.url) {
+        setGeneratedTrack(result.url);
+        setSuccess(true);
+      } else {
+        throw new Error('No music URL in response');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to generate music');
     } finally {
       setLoading(false);
     }
   };
+
+  const userAvatars = [
+    { id: 1, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
+    { id: 2, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka' },
+    { id: 3, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Max' },
+    { id: 4, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lucy' },
+    { id: 5, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John' },
+    { id: 6, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' }
+  ];
 
   return (
     <Box sx={{ 
@@ -132,35 +153,75 @@ const Create = () => {
           color="text.primary"
           gutterBottom
           sx={{
+            fontSize: { xs: '2.5rem', md: '3.5rem' },
+            fontWeight: 700,
             mb: 4,
             background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
         >
-          Professional AI Song Generator
+          Create Your Music with AI
         </Typography>
 
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {[1, 2, 3, 4, 5, 6].map((avatar) => (
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          mb: 4,
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            height: 48
+          }}>
+            {userAvatars.map((avatar, index) => (
               <Box
-                key={avatar}
+                key={avatar.id}
                 component="img"
-                src={`/avatars/avatar${avatar}.jpg`}
-                alt={`User ${avatar}`}
+                src={avatar.image}
+                alt={`Creator ${avatar.id}`}
                 sx={{
-                  width: 40,
-                  height: 40,
+                  width: 48,
+                  height: 48,
                   borderRadius: '50%',
-                  border: '2px solid white',
-                  marginLeft: '-8px',
-                  '&:first-of-type': { marginLeft: 0 },
+                  border: '2px solid #fff',
+                  backgroundColor: '#f0f0f0',
+                  position: 'absolute',
+                  left: `${index * 24}px`,
+                  zIndex: 6 - index,
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    zIndex: 10
+                  }
                 }}
               />
             ))}
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-              Trusted by 25,000+ musicians, content creators, and music enthusiasts worldwide
+          </Box>
+          
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: { xs: 'center', sm: 'flex-start' }
+          }}>
+            <Typography 
+              variant="h6" 
+              color="primary"
+              sx={{ fontWeight: 600, mb: 0.5 }}
+            >
+              Join Our Growing Community
+            </Typography>
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              align={{ xs: 'center', sm: 'left' }}
+            >
+              Trusted by 15,000+ musicians, content creators, and music enthusiasts worldwide
             </Typography>
           </Box>
         </Box>
@@ -237,11 +298,15 @@ const Create = () => {
 
                 <Box sx={{ mb: 3 }}>
                   <ButtonGroup variant="outlined" fullWidth>
-                    {['Genre', 'Moods', 'Voices', 'Tempos'].map((category) => (
+                    {Object.keys(availableTags).map((category) => (
                       <Button
                         key={category}
                         onClick={() => setActiveCategory(category)}
                         variant={activeCategory === category ? 'contained' : 'outlined'}
+                        sx={{
+                          background: activeCategory === category ? 'linear-gradient(45deg, #6C63FF, #FF6584)' : 'transparent',
+                          color: activeCategory === category ? 'white' : 'inherit',
+                        }}
                       >
                         #{category}
                       </Button>
@@ -251,7 +316,7 @@ const Create = () => {
 
                 <Box sx={{ mb: 3, maxHeight: '200px', overflowY: 'auto' }}>
                   <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                    {getVisibleTags().map((tag) => (
+                    {availableTags[activeCategory]?.map((tag) => (
                       <Chip
                         key={tag}
                         label={tag}
@@ -311,6 +376,34 @@ const Create = () => {
               sx={{ mb: 3 }}
             />
 
+            <Box sx={{ mb: 3 }}>
+              <Typography gutterBottom>
+                Song Duration: {duration} seconds
+              </Typography>
+              <Slider
+                value={duration}
+                onChange={handleDurationChange}
+                min={15}
+                max={180}
+                step={15}
+                marks={[
+                  { value: 15, label: '15s' },
+                  { value: 60, label: '1m' },
+                  { value: 120, label: '2m' },
+                  { value: 180, label: '3m' },
+                ]}
+                valueLabelDisplay="auto"
+                sx={{
+                  color: 'primary.main',
+                  '& .MuiSlider-thumb': {
+                    '&:hover, &.Mui-focusVisible': {
+                      boxShadow: '0 0 0 8px rgba(106, 99, 255, 0.16)',
+                    },
+                  },
+                }}
+              />
+            </Box>
+
             {error && (
               <Alert severity="error" sx={{ mb: 3 }}>
                 {error}
@@ -349,7 +442,7 @@ const Create = () => {
             {generatedTrack && (
               <Box sx={{ mt: 3 }}>
                 <audio controls style={{ width: '100%' }}>
-                  <source src={generatedTrack.trackUrl} type="audio/mp3" />
+                  <source src={generatedTrack} type="audio/mp3" />
                   Your browser does not support the audio element.
                 </audio>
               </Box>
