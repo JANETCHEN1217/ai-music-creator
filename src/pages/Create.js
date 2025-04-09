@@ -139,6 +139,30 @@ const Create = () => {
     { id: 6, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' }
   ];
 
+  const testimonials = [
+    {
+      name: 'Sarah Johnson',
+      role: 'Amateur Musician',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+      rating: 5,
+      comment: "Created a personalized birthday song in minutes! My daughter's face lit up when she heard her custom song. Pure magic! ✨"
+    },
+    {
+      name: 'Mike Chen',
+      role: 'Content Creator',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike',
+      rating: 5,
+      comment: "From idea to finished song in 5 minutes. The quality is unbelievable - sounds like a professional studio production! 🎵"
+    },
+    {
+      name: 'Emma Davis',
+      role: 'Wedding Planner',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
+      rating: 5,
+      comment: "Made a wedding song for my sister. Everyone thought we hired a composer. This AI is revolutionary! 🎸"
+    }
+  ];
+
   return (
     <Box sx={{ 
       minHeight: '90vh',
@@ -149,17 +173,20 @@ const Create = () => {
       <Container maxWidth="lg">
         <Typography
           component="h1"
-          variant="h3"
+          variant="h2"
           align="center"
           gutterBottom
           sx={{
             fontSize: { xs: '2.5rem', md: '3.5rem' },
             fontWeight: 700,
             mb: 4,
-            color: '#6C63FF',
+            background: 'linear-gradient(45deg, #6C63FF 30%, #FF6584 90%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            textAlign: 'center',
           }}
         >
-          Create Your Music with AI
+          Professional AI Song Generator
         </Typography>
 
         <Box sx={{ 
@@ -175,7 +202,8 @@ const Create = () => {
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            height: 48
+            height: 48,
+            width: '280px'
           }}>
             {userAvatars.map((avatar, index) => (
               <Box
@@ -190,7 +218,7 @@ const Create = () => {
                   border: '2px solid #fff',
                   backgroundColor: '#f0f0f0',
                   position: 'absolute',
-                  left: `${index * 24}px`,
+                  left: `${index * 40}px`,
                   zIndex: 6 - index,
                   transition: 'transform 0.2s',
                   '&:hover': {
@@ -455,6 +483,39 @@ const Create = () => {
                 </audio>
               </Box>
             )}
+
+            {testimonials.map((testimonial, index) => (
+              <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box
+                  component="img"
+                  src={testimonial.avatar}
+                  alt={testimonial.name}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: '50%',
+                    mr: 2,
+                    border: '2px solid #6C63FF'
+                  }}
+                />
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {testimonial.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {testimonial.role}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <span key={i} role="img" aria-label="star" style={{ color: '#FFD700' }}>⭐</span>
+                    ))}
+                  </Box>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {testimonial.comment}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
           </CardContent>
         </Card>
       </Container>
