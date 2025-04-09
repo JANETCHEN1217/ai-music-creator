@@ -149,17 +149,14 @@ const Create = () => {
       <Container maxWidth="lg">
         <Typography
           component="h1"
-          variant="h2"
+          variant="h3"
           align="center"
-          color="text.primary"
           gutterBottom
           sx={{
             fontSize: { xs: '2.5rem', md: '3.5rem' },
             fontWeight: 700,
             mb: 4,
-            background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: '#6C63FF',
           }}
         >
           Create Your Music with AI
@@ -212,16 +209,14 @@ const Create = () => {
           }}>
             <Typography 
               component="h2"
-              variant="h6" 
-              color="primary"
-              sx={{ fontWeight: 600, mb: 0.5 }}
+              variant="subtitle1"
+              sx={{ fontWeight: 600, mb: 0.5, color: '#6C63FF' }}
             >
               Join Our Growing Community
             </Typography>
             <Typography 
-              variant="body2" 
-              color="text.secondary"
-              align={{ xs: 'center', sm: 'left' }}
+              variant="body2"
+              sx={{ color: 'text.secondary' }}
             >
               Trusted by 15,000+ musicians, content creators, and music enthusiasts worldwide
             </Typography>
@@ -233,7 +228,7 @@ const Create = () => {
             <Typography 
               component="h2" 
               variant="h5"
-              sx={{ mb: 3 }}
+              sx={{ mb: 3, fontWeight: 600 }}
             >
               Music Generation
             </Typography>
@@ -440,7 +435,14 @@ const Create = () => {
             </Button>
 
             {!user && (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  mt: 2,
+                  textAlign: 'center',
+                  color: 'text.secondary'
+                }}
+              >
                 Sign in to start creating AI music
               </Typography>
             )}
