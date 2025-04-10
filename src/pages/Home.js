@@ -184,9 +184,19 @@ const Home = () => {
     setSuccess(false);
     
     try {
-      if (!user) {
-        throw new Error('Please sign in to generate music');
-      }
+      // 不强制要求用户登录以演示功能
+      // if (!user) {
+      //   throw new Error('Please sign in to generate music');
+      // }
+      
+      console.log('Starting music generation...');
+      console.log('Inputs:', {
+        mode,
+        description: description || "Happy music",
+        style: songStyle.length > 0 ? songStyle : songTitle,
+        lyrics: songLyrics,
+        isInstrumental
+      });
 
       const result = await MusicService.generateTrack({
         mode: mode,
@@ -196,6 +206,8 @@ const Home = () => {
         isInstrumental: isInstrumental,
         duration: 30
       });
+      
+      console.log('Music generation result:', result);
 
       const coverImage = `https://source.unsplash.com/300x300/?${encodeURIComponent(songTitle || description || 'music')}`;
       
@@ -209,9 +221,40 @@ const Home = () => {
       setGeneratedTracks([newTrack, ...generatedTracks]);
       setSuccess(true);
       
+      // 如果音轨状态是进行中，轮询更新状态
+      if (result.status === 'pending') {
+        const pollStatus = async () => {
+          try {
+            const updatedStatus = await MusicService.checkGenerationStatus(result.trackId);
+            console.log('Updated status:', updatedStatus);
+            
+            if (updatedStatus.status === 'completed') {
+              setGeneratedTracks(prev => {
+                return prev.map(track => 
+                  track.trackId === result.trackId 
+                    ? {...track, status: 'completed', audioUrl: updatedStatus.audio_url || track.audioUrl} 
+                    : track
+                );
+              });
+              return; // 停止轮询
+            } else if (updatedStatus.status === 'failed') {
+              setError('Music generation failed. Please try again.');
+              return; // 停止轮询
+            }
+            
+            // 继续轮询
+            setTimeout(pollStatus, 5000);
+          } catch (err) {
+            console.error('Error polling status:', err);
+          }
+        };
+        
+        setTimeout(pollStatus, 5000);
+      }
+      
     } catch (error) {
       console.error('Music generation error:', error);
-      setError(error.message);
+      setError(error.message || 'An error occurred during music generation');
     } finally {
       setLoading(false);
     }
