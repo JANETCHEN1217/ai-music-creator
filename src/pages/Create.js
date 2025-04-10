@@ -19,6 +19,7 @@ import {
   Alert,
   ButtonGroup,
   Slider,
+  Snackbar,
 } from '@mui/material';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -57,10 +58,10 @@ const Create = () => {
     try {
       const tags = await musicService.getTags();
       setAvailableTags({
-        genres: tags.filter(tag => tag.category === 'genre'),
-        moods: tags.filter(tag => tag.category === 'mood'),
-        voices: tags.filter(tag => tag.category === 'voice'),
-        tempos: tags.filter(tag => tag.category === 'tempo')
+        Genre: tags.genres || [],
+        Moods: tags.moods || [],
+        Voices: tags.voices || [],
+        Tempos: tags.tempos || []
       });
     } catch (error) {
       console.error('Error loading tags:', error);
@@ -77,18 +78,8 @@ const Create = () => {
   };
 
   const getVisibleTags = () => {
-    switch (activeCategory) {
-      case 'Genre':
-        return showAllTags ? availableTags.genres : availableTags.genres.slice(0, 12);
-      case 'Moods':
-        return availableTags.moods;
-      case 'Voices':
-        return availableTags.voices;
-      case 'Tempos':
-        return availableTags.tempos;
-      default:
-        return [];
-    }
+    const tags = availableTags[activeCategory] || [];
+    return activeCategory === 'Genre' && !showAllTags ? tags.slice(0, 12) : tags;
   };
 
   const handleDurationChange = (event, newValue) => {
@@ -96,35 +87,33 @@ const Create = () => {
   };
 
   const handleGenerateMusic = async () => {
-    if (!user) {
-      setError('Please sign in to generate music');
-      return;
-    }
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
 
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(false);
+      if (!user) {
+        throw new Error('Please sign in to generate music');
+      }
 
-      const musicParams = {
-        description: description || songStyle.join(', '),
-        duration: duration,
+      const params = {
+        title: songTitle,
+        description: mode === 'simple' ? description : songStyle.join(', '),
         style: songStyle,
-        isInstrumental: isInstrumental,
-        lyrics: mode === 'custom' ? songLyrics : undefined,
-        title: songTitle || 'Untitled',
+        lyrics: songLyrics,
+        isInstrumental,
+        duration: 30
       };
 
-      const result = await musicService.generateMusic(musicParams);
-      
-      if (result.url) {
-        setGeneratedTrack(result.url);
-        setSuccess(true);
-      } else {
-        throw new Error('No music URL in response');
-      }
+      const result = await musicService.generateMusic(params);
+      setGeneratedTrack(result);
+      setSuccess(true);
+      setError(null);
     } catch (err) {
-      setError(err.message || 'Failed to generate music');
+      console.error('Music generation error:', err);
+      setError(err.message || 'Failed to generate music. Please try again.');
+      setSuccess(false);
+      setGeneratedTrack(null);
     } finally {
       setLoading(false);
     }
@@ -274,7 +263,7 @@ const Create = () => {
 
                 <Box sx={{ mb: 3, maxHeight: '200px', overflowY: 'auto' }}>
                   <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                    {availableTags[activeCategory]?.map((tag) => (
+                    {getVisibleTags().map((tag) => (
                       <Chip
                         key={tag}
                         label={tag}
@@ -362,18 +351,6 @@ const Create = () => {
               />
             </Box>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {error}
-              </Alert>
-            )}
-
-            {success && (
-              <Alert severity="success" sx={{ mb: 3 }}>
-                Your song has been generated successfully!
-              </Alert>
-            )}
-
             <Button
               variant="contained"
               fullWidth
@@ -405,13 +382,38 @@ const Create = () => {
             )}
 
             {generatedTrack && (
-              <Box sx={{ mt: 3 }}>
+              <Box sx={{ mt: 4, p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Generated Track
+                </Typography>
                 <audio controls style={{ width: '100%' }}>
-                  <source src={generatedTrack} type="audio/mp3" />
+                  <source src={generatedTrack.url} type="audio/mpeg" />
                   Your browser does not support the audio element.
                 </audio>
               </Box>
             )}
+
+            <Snackbar 
+              open={Boolean(error)} 
+              autoHideDuration={6000} 
+              onClose={() => setError(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <Alert severity="error" onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            </Snackbar>
+
+            <Snackbar
+              open={success}
+              autoHideDuration={6000}
+              onClose={() => setSuccess(false)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <Alert severity="success" onClose={() => setSuccess(false)}>
+                Music generated successfully!
+              </Alert>
+            </Snackbar>
 
             <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
               <Typography variant="h6" gutterBottom>
