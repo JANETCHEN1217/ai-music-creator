@@ -13,7 +13,6 @@ import {
   Rating,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import Create from './Create';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import EditIcon from '@mui/icons-material/Edit';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -186,8 +185,111 @@ const Home = () => {
       bgcolor: 'background.default',
       minHeight: '100vh',
     }}>
-      {/* Create Section */}
-      <Create />
+      {/* Hero Section */}
+      <Box
+        sx={{
+          pt: { xs: 8, md: 12 },
+          pb: { xs: 8, md: 12 },
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <Container>
+          <Typography
+            variant="h1"
+            gutterBottom
+            sx={{
+              fontSize: { xs: '2.5rem', md: '4rem', lg: '5rem' },
+              fontWeight: 900,
+              lineHeight: 1.1,
+              mb: 4,
+              background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Professional AI Song Generator
+          </Typography>
+          
+          <Typography
+            variant="h5"
+            sx={{
+              maxWidth: 800,
+              mx: 'auto',
+              mb: 6,
+              color: 'text.secondary',
+              lineHeight: 1.6,
+              fontWeight: 400,
+            }}
+          >
+            Create studio-quality music in seconds. Personalized songs for any occasion, all powered by advanced AI technology.
+          </Typography>
+          
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            justifyContent="center"
+            sx={{ mb: 8 }}
+          >
+            <StyledButton
+              variant="contained"
+              size="large"
+              onClick={() => navigate('/create')}
+              startIcon={<MusicNoteIcon />}
+            >
+              Create Music Now
+            </StyledButton>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => navigate('/pricing')}
+              sx={{
+                borderRadius: 12,
+                padding: '12px 32px',
+                fontSize: '1.1rem',
+                borderWidth: 2,
+                '&:hover': {
+                  borderWidth: 2,
+                },
+              }}
+            >
+              View Pricing
+            </Button>
+          </Stack>
+          
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: 2,
+              mb: 4,
+            }}
+          >
+            {avatars.map((avatar, index) => (
+              <Avatar
+                key={index}
+                src={avatar}
+                sx={{
+                  width: 56,
+                  height: 56,
+                  border: '2px solid white',
+                  boxShadow: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                  }
+                }}
+              />
+            ))}
+          </Box>
+          
+          <Typography variant="body1" color="text.secondary">
+            Join thousands of creators making amazing music with AI technology
+          </Typography>
+        </Container>
+      </Box>
 
       {/* How to Make Songs Section */}
       <Box 
@@ -248,14 +350,8 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* User Testimonials Section */}
-      <Box 
-        sx={{ 
-          py: 8, 
-          bgcolor: alpha(theme.palette.background.default, 0.6),
-          backdropFilter: 'blur(10px)',
-        }}
-      >
+      {/* Testimonials Section */}
+      <Box sx={{ py: 8 }}>
         <Container maxWidth="lg">
           <Typography
             variant="h3"
@@ -269,74 +365,74 @@ const Home = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            What Our Users Say About AI Song Maker
+            What Our Users Say
           </Typography>
-
-          <Grid container spacing={4}>
-            {testimonials}
-          </Grid>
+          
+          <Box sx={{ position: 'relative', mb: 6 }}>
+            <FormatQuoteIcon
+              sx={{
+                position: 'absolute',
+                top: -40,
+                left: { xs: 0, md: -60 },
+                fontSize: 120,
+                color: 'primary.main',
+                opacity: 0.1,
+                transform: 'rotate(180deg)',
+              }}
+            />
+            
+            <Grid container spacing={3}>
+              {testimonials}
+            </Grid>
+          </Box>
         </Container>
       </Box>
 
-      {/* Trust Indicators */}
+      {/* CTA Section */}
       <Box 
         sx={{ 
-          py: 8,
+          py: 10, 
           textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
           bgcolor: alpha(theme.palette.background.paper, 0.4),
           backdropFilter: 'blur(10px)',
         }}
       >
-        <Container maxWidth="lg">
-          <Typography 
-            variant="h6" 
-            gutterBottom 
+        <Container maxWidth="md">
+          <Typography
+            variant="h3"
+            gutterBottom
             sx={{
-              color: alpha(theme.palette.text.secondary, 0.9),
-              fontWeight: 500,
+              fontWeight: 700,
+              mb: 3,
+              background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
             }}
           >
-            Trusted by 25,000+ musicians and creators worldwide
+            Ready to Create Your First AI Song?
           </Typography>
-          <Stack
-            direction="row"
-            spacing={-1}
-            justifyContent="center"
-            sx={{ 
-              mt: 3,
+          
+          <Typography
+            variant="h6"
+            sx={{
               mb: 4,
-              '&:hover > *': {
-                transform: 'translateY(-8px)',
-              }
+              maxWidth: 800,
+              mx: 'auto',
+              color: 'text.secondary',
             }}
           >
-            {avatars.map((avatar, index) => (
-              <Avatar
-                key={index}
-                src={avatar}
-                sx={{
-                  width: 48,
-                  height: 48,
-                  border: '2px solid',
-                  borderColor: 'primary.main',
-                  transition: 'transform 0.3s ease',
-                  '&:not(:first-of-type)': {
-                    marginLeft: -1,
-                  },
-                  '&:hover': {
-                    transform: 'translateY(-16px) scale(1.2) !important',
-                    zIndex: 1,
-                  },
-                }}
-              />
-            ))}
-          </Stack>
+            Start creating personalized songs in seconds. No musical experience required!
+          </Typography>
+          
           <StyledButton
             variant="contained"
             size="large"
             onClick={() => navigate('/create')}
+            sx={{ px: 6, py: 1.5 }}
           >
-            Start Creating Your Song
+            Get Started Now
           </StyledButton>
         </Container>
       </Box>
