@@ -1,60 +1,71 @@
 import axios from 'axios';
 
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'http://localhost:3000/api';
+
 class MusicService {
-  constructor() {
-    this.apiUrl = 'https://api.acedata.cloud/suno/audios';
-    this.apiKey = process.env.REACT_APP_ACEDATA_API_KEY || '65fa2f25521d4847889b3d1edf604c99';
-  }
-
-  async generateMusic(params) {
+  static async generateTrack({
+    mode,
+    description,
+    style,
+    lyrics,
+    isInstrumental,
+    duration = 30
+  }) {
     try {
-      const headers = {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      };
+      let endpoint = '';
+      let requestData = {};
 
-      const response = await axios({
-        method: 'POST',
-        url: this.apiUrl,
-        headers,
-        data: {
-          prompt: params.description || params.style.join(', '),
-          duration: params.duration || 30,
-          style: Array.isArray(params.style) ? params.style.join(', ') : params.style,
-          isInstrumental: Boolean(params.isInstrumental),
-          lyrics: params.lyrics || '',
-          title: params.title || 'Untitled',
-        },
-        timeout: 120000, // 120 seconds timeout
-        withCredentials: false // Disable sending cookies
-      });
+      if (mode === 'simple') {
+        endpoint = `${SUNO_API_URL}/generate`;
+        requestData = {
+          prompt: description,
+          duration
+        };
+      } else {
+        endpoint = `${SUNO_API_URL}/custom_generate`;
+        requestData = {
+          title: style,
+          prompt: description,
+          lyrics: lyrics || '',
+          is_instrumental: isInstrumental,
+          duration
+        };
+      }
 
-      if (!response.data || !response.data.url) {
-        throw new Error('Invalid response from music generation API');
+      const response = await axios.post(endpoint, requestData);
+
+      if (response.data.error) {
+        throw new Error(response.data.error);
       }
 
       return {
-        url: response.data.url,
-        id: response.data.id,
-        status: 'success'
+        trackId: response.data.id,
+        audioUrl: response.data.audio_url,
+        status: response.data.status
       };
     } catch (error) {
       console.error('Error generating music:', error);
-      
-      if (error.response?.status === 401) {
-        throw new Error('Authentication failed. Please check your API key.');
-      } else if (error.response?.status === 403) {
-        throw new Error('Access forbidden. Please check your API permissions.');
-      } else if (error.response?.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      } else if (error.code === 'ECONNABORTED') {
-        throw new Error('Request timed out. The server is taking too long to respond.');
-      } else if (error.message.includes('Network Error')) {
-        throw new Error('Network error. Please check your internet connection.');
-      }
-      
       throw new Error(error.response?.data?.message || 'Failed to generate music. Please try again.');
+    }
+  }
+
+  static async checkGenerationStatus(trackId) {
+    try {
+      const response = await axios.get(`${SUNO_API_URL}/get?ids=${trackId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking generation status:', error);
+      throw new Error('Failed to check generation status');
+    }
+  }
+
+  static async getQuota() {
+    try {
+      const response = await axios.get(`${SUNO_API_URL}/get_limit`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking quota:', error);
+      throw new Error('Failed to check quota');
     }
   }
 
@@ -83,4 +94,4 @@ class MusicService {
   }
 }
 
-export const musicService = new MusicService(); 
+export default MusicService; 

@@ -24,7 +24,7 @@ import {
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import { musicService } from '../services/musicService';
+import MusicService from '../services/musicService';
 import { useUser } from '../contexts/UserContext';
 
 const Create = () => {
@@ -56,7 +56,7 @@ const Create = () => {
 
   const loadTags = async () => {
     try {
-      const tags = await musicService.getTags();
+      const tags = await MusicService.getTags();
       setAvailableTags({
         Genre: tags.genres || [],
         Moods: tags.moods || [],
@@ -90,30 +90,42 @@ const Create = () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-
+    
     try {
+      // Check if user is authenticated
       if (!user) {
         throw new Error('Please sign in to generate music');
       }
 
-      const params = {
-        title: songTitle,
-        description: mode === 'simple' ? description : songStyle.join(', '),
+      const result = await MusicService.generateTrack({
+        mode: mode,
+        description: description,
         style: songStyle,
         lyrics: songLyrics,
-        isInstrumental,
+        isInstrumental: isInstrumental,
         duration: 30
-      };
+      });
 
-      const result = await musicService.generateMusic(params);
       setGeneratedTrack(result);
       setSuccess(true);
-      setError(null);
-    } catch (err) {
-      console.error('Music generation error:', err);
-      setError(err.message || 'Failed to generate music. Please try again.');
-      setSuccess(false);
-      setGeneratedTrack(null);
+      
+      // Poll for status if the generation is not immediate
+      if (result.status === 'pending') {
+        const checkStatus = async () => {
+          const status = await MusicService.checkGenerationStatus(result.trackId);
+          if (status.status === 'completed') {
+            setGeneratedTrack(status);
+          } else if (status.status === 'failed') {
+            setError('Music generation failed. Please try again.');
+          } else {
+            setTimeout(checkStatus, 5000); // Check again in 5 seconds
+          }
+        };
+        checkStatus();
+      }
+    } catch (error) {
+      console.error('Music generation error:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
