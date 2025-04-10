@@ -171,6 +171,38 @@ const Home = () => {
           Professional AI Song Generator
         </Typography>
 
+        <Box sx={{ textAlign: 'center', mb: 6 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            {avatars.map((avatar, index) => (
+              <Avatar
+                key={index}
+                src={avatar}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  border: '2px solid white',
+                  boxShadow: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                  }
+                }}
+              />
+            ))}
+          </Box>
+          <Typography variant="body1" color="text.secondary">
+            Trusted by 25,000+ musicians, content creators, and music enthusiasts worldwide
+          </Typography>
+        </Box>
+
         <Grid container spacing={3}>
           {/* Left side - Creation controls */}
           <Grid item xs={12} md={6}>
@@ -371,6 +403,136 @@ const Home = () => {
             </StyledCard>
           </Grid>
         </Grid>
+
+        <Box sx={{ mb: 8 }}>
+          <Typography
+            variant="h3"
+            align="center"
+            gutterBottom
+            sx={{
+              mb: 6,
+              fontWeight: 700,
+              background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            How to Make Songs with AI for Free
+          </Typography>
+
+          <Grid container spacing={4}>
+            {steps.map((step, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <StyledCard>
+                  <StyledIconBox>
+                    {step.icon}
+                  </StyledIconBox>
+                  <Typography 
+                    variant="h5" 
+                    gutterBottom
+                    sx={{ 
+                      fontWeight: 600,
+                      background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    {step.title}
+                  </Typography>
+                  <Typography 
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.8 }}
+                  >
+                    {step.description}
+                  </Typography>
+                </StyledCard>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        <Box sx={{ mb: 8 }}>
+          <Typography
+            variant="h3"
+            align="center"
+            gutterBottom
+            sx={{
+              mb: 6,
+              fontWeight: 700,
+              background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            What Our Users Say About AI Song Maker
+          </Typography>
+
+          <Grid container spacing={3}>
+            {testimonials.map((review, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 3,
+                    height: '100%',
+                    position: 'relative',
+                    borderRadius: 4,
+                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: theme.shadows[8],
+                    },
+                    '&:before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 4,
+                      borderRadius: '4px 4px 0 0',
+                      background: 'linear-gradient(45deg, #6C63FF, #FF6584)',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Avatar
+                      src={review.avatar}
+                      sx={{
+                        width: 56,
+                        height: 56,
+                        mr: 2,
+                        border: '2px solid',
+                        borderColor: 'primary.main'
+                      }}
+                    />
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {review.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {review.role}
+                      </Typography>
+                      <Rating value={5} readOnly size="small" sx={{ mt: 0.5 }} />
+                    </Box>
+                  </Box>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'text.secondary',
+                      lineHeight: 1.8,
+                      fontStyle: 'italic'
+                    }}
+                  >
+                    {review.text}
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
       </Container>
 
       <Snackbar
