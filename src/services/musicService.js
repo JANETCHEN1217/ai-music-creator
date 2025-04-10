@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'http://localhost:3000/api';
+const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY;
 
 class MusicService {
   static async generateTrack({
@@ -19,7 +20,8 @@ class MusicService {
         endpoint = `${SUNO_API_URL}/generate`;
         requestData = {
           prompt: description,
-          duration
+          duration,
+          api_key: SUNO_API_KEY
         };
       } else {
         endpoint = `${SUNO_API_URL}/custom_generate`;
@@ -28,9 +30,13 @@ class MusicService {
           prompt: description,
           lyrics: lyrics || '',
           is_instrumental: isInstrumental,
-          duration
+          duration,
+          api_key: SUNO_API_KEY
         };
       }
+
+      console.log('Sending request to:', endpoint);
+      console.log('Request data:', JSON.stringify(requestData));
 
       const response = await axios.post(endpoint, requestData);
 
@@ -51,7 +57,7 @@ class MusicService {
 
   static async checkGenerationStatus(trackId) {
     try {
-      const response = await axios.get(`${SUNO_API_URL}/get?ids=${trackId}`);
+      const response = await axios.get(`${SUNO_API_URL}/get?ids=${trackId}&api_key=${SUNO_API_KEY}`);
       return response.data;
     } catch (error) {
       console.error('Error checking generation status:', error);
@@ -61,7 +67,7 @@ class MusicService {
 
   static async getQuota() {
     try {
-      const response = await axios.get(`${SUNO_API_URL}/get_limit`);
+      const response = await axios.get(`${SUNO_API_URL}/get_limit?api_key=${SUNO_API_KEY}`);
       return response.data;
     } catch (error) {
       console.error('Error checking quota:', error);
@@ -69,7 +75,7 @@ class MusicService {
     }
   }
 
-  async getTags() {
+  static async getTags() {
     try {
       return {
         genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],

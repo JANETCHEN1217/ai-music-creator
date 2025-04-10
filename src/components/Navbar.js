@@ -14,6 +14,7 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import MusicService from '../services/musicService';
 
 const Navbar = () => {
   const { user, logout } = useUser();
@@ -46,6 +47,19 @@ const Navbar = () => {
     }
     handleClose();
   };
+
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const tags = await MusicService.getTags();
+        // 使用标签
+      } catch (error) {
+        console.error('Error loading tags:', error);
+      }
+    };
+
+    loadTags();
+  }, []);
 
   return (
     <AppBar position="sticky" sx={{ backgroundColor: '#111', boxShadow: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
