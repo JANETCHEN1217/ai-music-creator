@@ -1,0 +1,5 @@
+[33mcommit 1006e046c49a90fc10f9bc56e7fea9fca1bbc158[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: JANETCHEN1217 <chenjianan206@gmail.com>
+Date:   Wed Apr 9 10:21:05 2025 +0800
+
+    Update Create page: Fix avatar loading, optimize text content and add duration slider

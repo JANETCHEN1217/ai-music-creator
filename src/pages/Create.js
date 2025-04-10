@@ -130,15 +130,6 @@ const Create = () => {
     }
   };
 
-  const userAvatars = [
-    { id: 1, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
-    { id: 2, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka' },
-    { id: 3, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Max' },
-    { id: 4, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lucy' },
-    { id: 5, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John' },
-    { id: 6, image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' }
-  ];
-
   const testimonials = [
     {
       name: 'Sarah Johnson',
@@ -188,68 +179,6 @@ const Create = () => {
         >
           Professional AI Song Generator
         </Typography>
-
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          mb: 4,
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: 'center',
-          gap: 2
-        }}>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            height: 48,
-            width: '280px'
-          }}>
-            {userAvatars.map((avatar, index) => (
-              <Box
-                key={avatar.id}
-                component="img"
-                src={avatar.image}
-                alt={`Creator ${avatar.id}`}
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  border: '2px solid #fff',
-                  backgroundColor: '#f0f0f0',
-                  position: 'absolute',
-                  left: `${index * 40}px`,
-                  zIndex: 6 - index,
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    zIndex: 10
-                  }
-                }}
-              />
-            ))}
-          </Box>
-          
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: { xs: 'center', sm: 'flex-start' }
-          }}>
-            <Typography 
-              component="h2"
-              variant="subtitle1"
-              sx={{ fontWeight: 600, mb: 0.5, color: '#6C63FF' }}
-            >
-              Join Our Growing Community
-            </Typography>
-            <Typography 
-              variant="body2"
-              sx={{ color: 'text.secondary' }}
-            >
-              Trusted by 15,000+ musicians, content creators, and music enthusiasts worldwide
-            </Typography>
-          </Box>
-        </Box>
 
         <Card sx={{ maxWidth: 800, mx: 'auto', mt: 4, bgcolor: 'background.paper' }}>
           <CardContent>
@@ -484,38 +413,43 @@ const Create = () => {
               </Box>
             )}
 
-            {testimonials.map((testimonial, index) => (
-              <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Box
-                  component="img"
-                  src={testimonial.avatar}
-                  alt={testimonial.name}
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    mr: 2,
-                    border: '2px solid #6C63FF'
-                  }}
-                />
-                <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    {testimonial.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {testimonial.role}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <span key={i} role="img" aria-label="star" style={{ color: '#FFD700' }}>⭐</span>
-                    ))}
+            <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+              <Typography variant="h6" gutterBottom>
+                What Our Users Say
+              </Typography>
+              {testimonials.map((testimonial, index) => (
+                <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 2, bgcolor: 'rgba(0, 0, 0, 0.02)', borderRadius: 2 }}>
+                  <Box
+                    component="img"
+                    src={testimonial.avatar}
+                    alt={testimonial.name}
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      mr: 2,
+                      border: '2px solid #6C63FF'
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      {testimonial.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {testimonial.role}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                      {[...Array(testimonial.rating)].map((_, i) => (
+                        <span key={i} role="img" aria-label="star" style={{ color: '#FFD700' }}>⭐</span>
+                      ))}
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      {testimonial.comment}
+                    </Typography>
                   </Box>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {testimonial.comment}
-                  </Typography>
                 </Box>
-              </Box>
-            ))}
+              ))}
+            </Box>
           </CardContent>
         </Card>
       </Container>
