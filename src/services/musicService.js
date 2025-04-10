@@ -1,10 +1,8 @@
 import axios from 'axios';
 
-// 移除 CORS 代理，这可能是原因之一
-// const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno.gcui.art/api';
-const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY;
-const ACEDATA_API_KEY = process.env.REACT_APP_ACEDATA_API_KEY;
+// 更新为 sunoapi.org 的 API 端点
+const SUNO_API_URL = 'https://api.sunoapi.org/api';
+const SUNO_API_KEY = 'cd4c08a93be11e2d434a03705f11068f'; // 您的 API 密钥
 
 class MusicService {
   static async generateTrack({
@@ -16,17 +14,28 @@ class MusicService {
     duration = 30
   }) {
     try {
-      console.log('Starting music generation...');
-      console.log('API Key:', SUNO_API_KEY ? 'Available' : 'Missing');
-      console.log('ACEDATA Key:', ACEDATA_API_KEY ? 'Available' : 'Missing');
+      console.log('Starting music generation with sunoapi.org...');
       
-      // 使用 Acedata API 作为备选方案
-      const endpoint = 'https://api.acedata.cloud/suno/audios';
-      const requestData = {
-        prompt: description || (Array.isArray(style) ? style.join(', ') : style) || "Happy music",
-        lyrics: lyrics || '',
-        is_instrumental: isInstrumental,
-      };
+      let endpoint = '';
+      let requestData = {};
+
+      // 根据模式选择不同的 API 端点
+      if (mode === 'simple') {
+        endpoint = `${SUNO_API_URL}/generate`;
+        requestData = {
+          prompt: description || "Happy music",
+          duration
+        };
+      } else {
+        endpoint = `${SUNO_API_URL}/custom-generate`;
+        requestData = {
+          title: Array.isArray(style) ? style.join(', ') : style,
+          prompt: description || "Happy music",
+          lyrics: lyrics || '',
+          is_instrumental: isInstrumental,
+          duration
+        };
+      }
 
       console.log('Sending request to:', endpoint);
       console.log('Request data:', JSON.stringify(requestData));
@@ -34,7 +43,7 @@ class MusicService {
       const response = await axios.post(endpoint, requestData, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${ACEDATA_API_KEY || SUNO_API_KEY}`
+          'Authorization': `Bearer ${SUNO_API_KEY}`
         }
       });
 
@@ -44,69 +53,48 @@ class MusicService {
         throw new Error(response.data.error);
       }
 
-      // 模拟成功响应，用于测试用户界面
-      if (!response.data.id && !response.data.audio_url) {
-        console.log('Creating mock response for testing');
-        return {
-          trackId: 'test-' + Date.now(),
-          audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/JingjieJian-SeunagingforthePeople.ogg',
-          status: 'completed'
-        };
-      }
-
       return {
-        trackId: response.data.id,
+        trackId: response.data.id || response.data.track_id,
         audioUrl: response.data.audio_url || response.data.url,
-        status: response.data.status || 'completed'
+        status: response.data.status || 'pending'
       };
     } catch (error) {
       console.error('Error generating music:', error);
       console.error('Error details:', error.response?.data || error.message);
-      
-      // 模拟成功响应，用于测试用户界面
-      console.log('Creating mock response after error for testing');
-      return {
-        trackId: 'error-test-' + Date.now(),
-        audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/JingjieJian-SeunagingforthePeople.ogg',
-        status: 'completed'
-      };
+      throw new Error(error.response?.data?.message || 'Failed to generate music. Please try again.');
     }
   }
 
   static async checkGenerationStatus(trackId) {
     try {
-      // 对于测试用的模拟响应，直接返回完成状态
-      if (trackId.startsWith('test-') || trackId.startsWith('error-test-')) {
-        return {
-          id: trackId,
-          audio_url: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/JingjieJian-SeunagingforthePeople.ogg',
-          status: 'completed'
-        };
-      }
-      
-      const response = await axios.get(`${SUNO_API_URL}/get?ids=${trackId}&api_key=${SUNO_API_KEY}`, {
+      const response = await axios.get(`${SUNO_API_URL}/status?id=${trackId}`, {
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'Authorization': `Bearer ${SUNO_API_KEY}`
         }
       });
-      return response.data;
-    } catch (error) {
-      console.error('Error checking generation status:', error);
       
-      // 对于测试，返回模拟状态
+      console.log('Status check response:', response.data);
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
       return {
         id: trackId,
-        audio_url: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/JingjieJian-SeunagingforthePeople.ogg',
-        status: 'completed'
+        audio_url: response.data.audio_url || response.data.url,
+        status: response.data.status
       };
+    } catch (error) {
+      console.error('Error checking generation status:', error);
+      throw new Error('Failed to check generation status');
     }
   }
 
   static async getQuota() {
     try {
-      const response = await axios.get(`${SUNO_API_URL}/get_limit?api_key=${SUNO_API_KEY}`, {
+      const response = await axios.get(`${SUNO_API_URL}/quota`, {
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'Authorization': `Bearer ${SUNO_API_KEY}`
         }
       });
       return response.data;
@@ -118,6 +106,19 @@ class MusicService {
 
   static async getTags() {
     try {
+      // 尝试从 API 获取标签
+      try {
+        const response = await axios.get(`${SUNO_API_URL}/tags`, {
+          headers: {
+            'Authorization': `Bearer ${SUNO_API_KEY}`
+          }
+        });
+        return response.data;
+      } catch (e) {
+        console.log('Failed to fetch tags from API, using fallback', e);
+      }
+      
+      // 使用默认标签作为备选
       return {
         genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
         moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
@@ -127,10 +128,10 @@ class MusicService {
     } catch (error) {
       console.error('Error fetching tags:', error);
       return {
-        genres: [],
-        moods: [],
-        voices: [],
-        tempos: []
+        genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
+        moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
+        voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
+        tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
       };
     }
   }

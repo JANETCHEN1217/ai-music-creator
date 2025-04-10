@@ -184,13 +184,14 @@ const Home = () => {
     setSuccess(false);
     
     try {
-      // 不强制要求用户登录以演示功能
-      // if (!user) {
-      //   throw new Error('Please sign in to generate music');
-      // }
+      if (!user) {
+        setError('请先登录以使用音乐生成功能');
+        setLoading(false);
+        return;
+      }
       
-      console.log('Starting music generation...');
-      console.log('Inputs:', {
+      console.log('开始生成音乐...');
+      console.log('输入参数:', {
         mode,
         description: description || "Happy music",
         style: songStyle.length > 0 ? songStyle : songTitle,
@@ -207,7 +208,7 @@ const Home = () => {
         duration: 30
       });
       
-      console.log('Music generation result:', result);
+      console.log('音乐生成结果:', result);
 
       const coverImage = `https://source.unsplash.com/300x300/?${encodeURIComponent(songTitle || description || 'music')}`;
       
@@ -215,46 +216,68 @@ const Home = () => {
         ...result,
         title: songTitle || description || 'My Song',
         coverImage,
-        timeStamp: new Date().toISOString()
+        timeStamp: new Date().toISOString(),
+        generationTime: 0
       };
 
       setGeneratedTracks([newTrack, ...generatedTracks]);
       setSuccess(true);
       
-      // 如果音轨状态是进行中，轮询更新状态
-      if (result.status === 'pending') {
-        const pollStatus = async () => {
-          try {
-            const updatedStatus = await MusicService.checkGenerationStatus(result.trackId);
-            console.log('Updated status:', updatedStatus);
-            
-            if (updatedStatus.status === 'completed') {
-              setGeneratedTracks(prev => {
-                return prev.map(track => 
-                  track.trackId === result.trackId 
-                    ? {...track, status: 'completed', audioUrl: updatedStatus.audio_url || track.audioUrl} 
-                    : track
-                );
-              });
-              return; // 停止轮询
-            } else if (updatedStatus.status === 'failed') {
-              setError('Music generation failed. Please try again.');
-              return; // 停止轮询
-            }
-            
-            // 继续轮询
-            setTimeout(pollStatus, 5000);
-          } catch (err) {
-            console.error('Error polling status:', err);
+      // 开始轮询检查生成状态
+      const startTime = Date.now();
+      const checkStatusInterval = setInterval(async () => {
+        try {
+          // 更新生成时间
+          setGeneratedTracks(prev => {
+            return prev.map(track => 
+              track.trackId === result.trackId 
+                ? {...track, generationTime: Math.floor((Date.now() - startTime) / 1000)} 
+                : track
+            );
+          });
+          
+          const updatedStatus = await MusicService.checkGenerationStatus(result.trackId);
+          console.log('状态更新:', updatedStatus);
+          
+          if (updatedStatus.status === 'completed') {
+            clearInterval(checkStatusInterval);
+            setGeneratedTracks(prev => {
+              return prev.map(track => 
+                track.trackId === result.trackId 
+                  ? {
+                      ...track, 
+                      status: 'completed', 
+                      audioUrl: updatedStatus.audio_url || track.audioUrl,
+                      generationTime: Math.floor((Date.now() - startTime) / 1000)
+                    } 
+                  : track
+              );
+            });
+          } else if (updatedStatus.status === 'failed') {
+            clearInterval(checkStatusInterval);
+            setError('音乐生成失败，请再试一次');
+            setGeneratedTracks(prev => {
+              return prev.map(track => 
+                track.trackId === result.trackId 
+                  ? {...track, status: 'failed'} 
+                  : track
+              );
+            });
           }
-        };
-        
-        setTimeout(pollStatus, 5000);
-      }
+        } catch (err) {
+          console.error('检查状态时出错:', err);
+          // 即使发生错误，也继续轮询
+        }
+      }, 5000); // 每5秒检查一次
+      
+      // 60秒后停止轮询，避免无限轮询
+      setTimeout(() => {
+        clearInterval(checkStatusInterval);
+      }, 60000);
       
     } catch (error) {
-      console.error('Music generation error:', error);
-      setError(error.message || 'An error occurred during music generation');
+      console.error('音乐生成错误:', error);
+      setError(error.message || '音乐生成过程中发生错误');
     } finally {
       setLoading(false);
     }
