@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'http://localhost:3000/api';
+// 使用 CORS 代理
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno.gcui.art/api';
 const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY;
 
 class MusicService {
@@ -17,16 +19,16 @@ class MusicService {
       let requestData = {};
 
       if (mode === 'simple') {
-        endpoint = `${SUNO_API_URL}/generate`;
+        endpoint = `${CORS_PROXY}${SUNO_API_URL}/generate`;
         requestData = {
           prompt: description,
           duration,
           api_key: SUNO_API_KEY
         };
       } else {
-        endpoint = `${SUNO_API_URL}/custom_generate`;
+        endpoint = `${CORS_PROXY}${SUNO_API_URL}/custom_generate`;
         requestData = {
-          title: style,
+          title: Array.isArray(style) ? style.join(', ') : style,
           prompt: description,
           lyrics: lyrics || '',
           is_instrumental: isInstrumental,
@@ -38,7 +40,12 @@ class MusicService {
       console.log('Sending request to:', endpoint);
       console.log('Request data:', JSON.stringify(requestData));
 
-      const response = await axios.post(endpoint, requestData);
+      const response = await axios.post(endpoint, requestData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
 
       if (response.data.error) {
         throw new Error(response.data.error);
@@ -57,7 +64,11 @@ class MusicService {
 
   static async checkGenerationStatus(trackId) {
     try {
-      const response = await axios.get(`${SUNO_API_URL}/get?ids=${trackId}&api_key=${SUNO_API_KEY}`);
+      const response = await axios.get(`${CORS_PROXY}${SUNO_API_URL}/get?ids=${trackId}&api_key=${SUNO_API_KEY}`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error checking generation status:', error);
@@ -67,7 +78,11 @@ class MusicService {
 
   static async getQuota() {
     try {
-      const response = await axios.get(`${SUNO_API_URL}/get_limit?api_key=${SUNO_API_KEY}`);
+      const response = await axios.get(`${CORS_PROXY}${SUNO_API_URL}/get_limit?api_key=${SUNO_API_KEY}`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error checking quota:', error);
