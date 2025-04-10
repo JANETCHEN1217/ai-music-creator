@@ -20,10 +20,21 @@ import {
   ButtonGroup,
   Slider,
   Snackbar,
+  Grid,
+  Paper,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Divider,
 } from '@mui/material';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DownloadIcon from '@mui/icons-material/Download';
+import CloseIcon from '@mui/icons-material/Close';
 import MusicService from '../services/musicService';
 import { useUser } from '../contexts/UserContext';
 
@@ -41,8 +52,9 @@ const Create = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [generatedTrack, setGeneratedTrack] = useState(null);
+  const [generatedTracks, setGeneratedTracks] = useState([]);
   const [duration, setDuration] = useState(30);
+  const [generationTime, setGenerationTime] = useState(0);
   const [availableTags, setAvailableTags] = useState({
     Genre: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
     Moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
@@ -90,6 +102,7 @@ const Create = () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
+    setGenerationTime(0);
     
     try {
       // Check if user is authenticated
@@ -97,28 +110,72 @@ const Create = () => {
         throw new Error('Please sign in to generate music');
       }
 
+      const startTime = Date.now();
+      const timer = setInterval(() => {
+        setGenerationTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+
       const result = await MusicService.generateTrack({
         mode: mode,
-        description: description,
-        style: songStyle,
+        description: description || "Happy music",
+        style: songStyle.length > 0 ? songStyle : songTitle,
         lyrics: songLyrics,
         isInstrumental: isInstrumental,
         duration: 30
       });
 
-      setGeneratedTrack(result);
+      clearInterval(timer);
+
+      // Create cover image for the track
+      const coverImage = `https://source.unsplash.com/300x300/?${encodeURIComponent(songTitle || description || 'music')}`;
+      
+      const newTrack = {
+        ...result,
+        title: songTitle || description || 'My Song',
+        coverImage,
+        timeStamp: new Date().toISOString(),
+        generationTime: Math.floor((Date.now() - startTime) / 1000)
+      };
+
+      setGeneratedTracks([newTrack, ...generatedTracks]);
       setSuccess(true);
       
       // Poll for status if the generation is not immediate
       if (result.status === 'pending') {
         const checkStatus = async () => {
-          const status = await MusicService.checkGenerationStatus(result.trackId);
-          if (status.status === 'completed') {
-            setGeneratedTrack(status);
-          } else if (status.status === 'failed') {
-            setError('Music generation failed. Please try again.');
-          } else {
-            setTimeout(checkStatus, 5000); // Check again in 5 seconds
+          try {
+            const status = await MusicService.checkGenerationStatus(result.trackId);
+            if (status.status === 'completed') {
+              setGeneratedTracks(prev => {
+                const updatedTracks = [...prev];
+                const index = updatedTracks.findIndex(t => t.trackId === result.trackId);
+                if (index !== -1) {
+                  updatedTracks[index] = {
+                    ...updatedTracks[index],
+                    ...status,
+                    status: 'completed'
+                  };
+                }
+                return updatedTracks;
+              });
+            } else if (status.status === 'failed') {
+              setError('Music generation failed. Please try again.');
+              setGeneratedTracks(prev => {
+                const updatedTracks = [...prev];
+                const index = updatedTracks.findIndex(t => t.trackId === result.trackId);
+                if (index !== -1) {
+                  updatedTracks[index] = {
+                    ...updatedTracks[index],
+                    status: 'failed'
+                  };
+                }
+                return updatedTracks;
+              });
+            } else {
+              setTimeout(checkStatus, 5000); // Check again in 5 seconds
+            }
+          } catch (error) {
+            console.error('Error checking status:', error);
           }
         };
         checkStatus();
@@ -131,344 +188,529 @@ const Create = () => {
     }
   };
 
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'Amateur Musician',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-      rating: 5,
-      comment: "Created a personalized birthday song in minutes! My daughter's face lit up when she heard her custom song. Pure magic! ✨"
-    },
-    {
-      name: 'Mike Chen',
-      role: 'Content Creator',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike',
-      rating: 5,
-      comment: "From idea to finished song in 5 minutes. The quality is unbelievable - sounds like a professional studio production! 🎵"
-    },
-    {
-      name: 'Emma Davis',
-      role: 'Wedding Planner',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
-      rating: 5,
-      comment: "Made a wedding song for my sister. Everyone thought we hired a composer. This AI is revolutionary! 🎸"
-    }
-  ];
+  // Getting track cover image based on title/description
+  const getTrackCoverImage = (title, description) => {
+    return `https://source.unsplash.com/300x300/?${encodeURIComponent(title || description || 'music')}`;
+  };
 
   return (
     <Box sx={{ 
       minHeight: '90vh',
       bgcolor: 'background.default',
-      pt: 8,
+      pt: 4,
       pb: 6,
+      overflow: 'hidden',
     }}>
-      <Container maxWidth="lg">
-        <Typography
-          component="h1"
-          variant="h2"
-          align="center"
-          gutterBottom
-          sx={{
-            fontSize: { xs: '2.5rem', md: '3.5rem' },
-            fontWeight: 700,
-            mb: 4,
-            background: 'linear-gradient(45deg, #6C63FF 30%, #FF6584 90%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textAlign: 'center',
-          }}
-        >
-          Professional AI Song Generator
-        </Typography>
-
-        <Card sx={{ maxWidth: 800, mx: 'auto', mt: 4, bgcolor: 'background.paper' }}>
-          <CardContent>
-            <Typography 
-              component="h2" 
-              variant="h5"
-              sx={{ mb: 3, fontWeight: 600 }}
-            >
-              Music Generation
-            </Typography>
-
-            <Box sx={{ mb: 3 }}>
-              <ToggleButtonGroup
-                value={mode}
-                exclusive
-                onChange={(event, newMode) => newMode && setMode(newMode)}
-                aria-label="creation mode"
-                fullWidth
-              >
-                <ToggleButton value="custom" aria-label="custom mode">
-                  Custom Mode
-                </ToggleButton>
-                <ToggleButton value="simple" aria-label="simple mode">
-                  Simple Mode
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isInstrumental}
-                  onChange={(e) => setIsInstrumental(e.target.checked)}
-                />
-              }
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <span>Instrumental Mode</span>
-                  <Tooltip title="Create music without lyrics">
-                    <HelpOutlineIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-                  </Tooltip>
-                </Box>
-              }
-              sx={{ mb: 3 }}
-            />
-
-            {mode === 'custom' ? (
-              <>
-                <TextField
-                  fullWidth
-                  label="Enter song title"
-                  value={songTitle}
-                  onChange={(e) => setSongTitle(e.target.value)}
-                  variant="outlined"
-                  sx={{ mb: 3 }}
-                  inputProps={{ maxLength: 30 }}
-                  helperText={`${songTitle.length}/30`}
-                />
-
-                <TextField
-                  fullWidth
-                  label="Enter song style"
-                  value={songStyle.join(', ')}
-                  onChange={(e) => setSongStyle(e.target.value.split(', '))}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                  placeholder="E.g. mexican music, cumbia, male voice"
-                  inputProps={{ maxLength: 120 }}
-                  helperText={`${songStyle.length}/120`}
-                />
-
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Style and Genre List
-                </Typography>
-
-                <Box sx={{ mb: 3 }}>
-                  <ButtonGroup variant="outlined" fullWidth>
-                    {Object.keys(availableTags).map((category) => (
-                      <Button
-                        key={category}
-                        onClick={() => setActiveCategory(category)}
-                        variant={activeCategory === category ? 'contained' : 'outlined'}
-                        sx={{
-                          background: activeCategory === category ? 'linear-gradient(45deg, #6C63FF, #FF6584)' : 'transparent',
-                          color: activeCategory === category ? 'white' : 'inherit',
-                        }}
-                      >
-                        #{category}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                </Box>
-
-                <Box sx={{ mb: 3, maxHeight: '200px', overflowY: 'auto' }}>
-                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                    {getVisibleTags().map((tag) => (
-                      <Chip
-                        key={tag}
-                        label={tag}
-                        onClick={() => handleTagClick(tag)}
-                        sx={{
-                          bgcolor: songStyle.includes(tag) ? 'primary.main' : '#2A2A2A',
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: songStyle.includes(tag) ? 'primary.dark' : '#3A3A3A',
-                          },
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                </Box>
-
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="Enter song lyrics"
-                  value={songLyrics}
-                  onChange={(e) => setSongLyrics(e.target.value)}
-                  variant="outlined"
-                  sx={{ mb: 3 }}
-                  inputProps={{ maxLength: 2000 }}
-                  helperText={`${songLyrics.length}/2000`}
-                />
-              </>
-            ) : (
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                placeholder="E.g. A happy pop song about summer vacation"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                variant="outlined"
-                sx={{ mb: 3 }}
-                inputProps={{ maxLength: 200 }}
-                helperText={`${description.length}/200`}
-              />
-            )}
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                />
-              }
-              label={
-                <Typography sx={{ color: 'text.secondary' }}>
-                  When enabled, your song will be visible to other users in the community
-                </Typography>
-              }
-              sx={{ mb: 3 }}
-            />
-
-            <Box sx={{ mb: 3 }}>
-              <Typography gutterBottom>
-                Song Duration: {duration} seconds
-              </Typography>
-              <Slider
-                value={duration}
-                onChange={handleDurationChange}
-                min={15}
-                max={180}
-                step={15}
-                marks={[
-                  { value: 15, label: '15s' },
-                  { value: 60, label: '1m' },
-                  { value: 120, label: '2m' },
-                  { value: 180, label: '3m' },
-                ]}
-                valueLabelDisplay="auto"
-                sx={{
-                  color: 'primary.main',
-                  '& .MuiSlider-thumb': {
-                    '&:hover, &.Mui-focusVisible': {
-                      boxShadow: '0 0 0 8px rgba(106, 99, 255, 0.16)',
-                    },
-                  },
-                }}
-              />
-            </Box>
-
-            <Button
-              variant="contained"
-              fullWidth
-              size="large"
-              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <MusicNoteIcon />}
-              onClick={handleGenerateMusic}
-              disabled={loading || (!description && mode === 'simple') || (!songStyle.length && mode === 'custom')}
+      <Grid container spacing={2} sx={{ px: 2 }}>
+        {/* Left side - Creation controls */}
+        <Grid item xs={12} md={6} lg={5}>
+          <Box
+            sx={{
+              height: { md: 'calc(100vh - 100px)', xs: 'auto' },
+              overflowY: 'auto',
+              pr: { md: 2, xs: 0 },
+              pb: 2,
+            }}
+          >
+            <Typography
+              component="h1"
+              variant="h4"
+              gutterBottom
               sx={{
-                background: 'linear-gradient(45deg, #8E2DE2, #4A00E0)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #7B1FA2, #4A00E0)',
-                },
+                fontWeight: 700,
+                mb: 3,
+                background: 'linear-gradient(45deg, #6C63FF 30%, #FF6584 90%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
-              {loading ? 'Generating...' : 'Generate with AI'}
-            </Button>
+              Create Music
+            </Typography>
 
-            {!user && (
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mt: 2,
-                  textAlign: 'center',
-                  color: 'text.secondary'
+            <Card sx={{ mb: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
+              <CardContent>
+                <Box sx={{ mb: 3 }}>
+                  <ToggleButtonGroup
+                    value={mode}
+                    exclusive
+                    onChange={(event, newMode) => newMode && setMode(newMode)}
+                    aria-label="creation mode"
+                    sx={{
+                      width: '100%',
+                      '.MuiToggleButton-root': {
+                        borderRadius: '10px',
+                        py: 1.5,
+                        fontWeight: 'bold',
+                        '&.Mui-selected': {
+                          backgroundColor: '#6C63FF',
+                          color: 'white',
+                          '&:hover': {
+                            backgroundColor: '#5a52d5',
+                          },
+                        },
+                      },
+                      '.MuiToggleButtonGroup-grouped': {
+                        border: '1px solid rgba(0, 0, 0, 0.12)',
+                      },
+                    }}
+                  >
+                    <ToggleButton value="custom" aria-label="custom mode">
+                      Custom Mode
+                    </ToggleButton>
+                    <ToggleButton value="simple" aria-label="simple mode">
+                      Simple Mode
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isInstrumental}
+                      onChange={(e) => setIsInstrumental(e.target.checked)}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: '#6C63FF',
+                        },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#6C63FF',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Instrumental Mode</span>
+                      <Tooltip title="Create music without lyrics">
+                        <HelpOutlineIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                      </Tooltip>
+                    </Box>
+                  }
+                  sx={{ mb: 3 }}
+                />
+
+                {mode === 'custom' ? (
+                  <>
+                    <TextField
+                      fullWidth
+                      label="Enter song title"
+                      value={songTitle}
+                      onChange={(e) => setSongTitle(e.target.value)}
+                      variant="outlined"
+                      sx={{ mb: 3 }}
+                      inputProps={{ maxLength: 30 }}
+                      helperText={`${songTitle.length}/30`}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Enter song style"
+                      value={songStyle.join(', ')}
+                      onChange={(e) => setSongStyle(e.target.value.split(', '))}
+                      variant="outlined"
+                      sx={{ mb: 2 }}
+                      placeholder="E.g. mexican music, cumbia, male voice"
+                      multiline
+                      rows={3}
+                      inputProps={{ maxLength: 120 }}
+                      helperText={`${songStyle.join(', ').length}/120`}
+                    />
+
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Style and Genre List
+                    </Typography>
+
+                    <Box sx={{ mb: 2 }}>
+                      <ButtonGroup 
+                        variant="outlined" 
+                        size="small"
+                        sx={{ 
+                          mb: 2,
+                          '& .MuiButtonGroup-grouped': {
+                            borderRadius: '20px',
+                            mx: 0.5,
+                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                            '&.Mui-selected': {
+                              backgroundColor: '#6C63FF',
+                              color: 'white',
+                            },
+                          },
+                        }}
+                      >
+                        <Button 
+                          onClick={() => setActiveCategory('Genre')}
+                          variant={activeCategory === 'Genre' ? 'contained' : 'outlined'}
+                          sx={{ 
+                            borderRadius: '20px',
+                            bgcolor: activeCategory === 'Genre' ? '#6C63FF' : 'transparent',
+                            color: activeCategory === 'Genre' ? 'white' : 'inherit',
+                            '&:hover': {
+                              bgcolor: activeCategory === 'Genre' ? '#5a52d5' : 'rgba(0, 0, 0, 0.04)',
+                            }
+                          }}
+                        >
+                          # Genre
+                        </Button>
+                        <Button 
+                          onClick={() => setActiveCategory('Moods')}
+                          variant={activeCategory === 'Moods' ? 'contained' : 'outlined'}
+                          sx={{ 
+                            borderRadius: '20px',
+                            bgcolor: activeCategory === 'Moods' ? '#6C63FF' : 'transparent',
+                            color: activeCategory === 'Moods' ? 'white' : 'inherit',
+                            '&:hover': {
+                              bgcolor: activeCategory === 'Moods' ? '#5a52d5' : 'rgba(0, 0, 0, 0.04)',
+                            }
+                          }}
+                        >
+                          # Moods
+                        </Button>
+                        <Button 
+                          onClick={() => setActiveCategory('Voices')}
+                          variant={activeCategory === 'Voices' ? 'contained' : 'outlined'}
+                          sx={{ 
+                            borderRadius: '20px',
+                            bgcolor: activeCategory === 'Voices' ? '#6C63FF' : 'transparent',
+                            color: activeCategory === 'Voices' ? 'white' : 'inherit',
+                            '&:hover': {
+                              bgcolor: activeCategory === 'Voices' ? '#5a52d5' : 'rgba(0, 0, 0, 0.04)',
+                            }
+                          }}
+                        >
+                          # Voices
+                        </Button>
+                        <Button 
+                          onClick={() => setActiveCategory('Tempos')}
+                          variant={activeCategory === 'Tempos' ? 'contained' : 'outlined'}
+                          sx={{ 
+                            borderRadius: '20px',
+                            bgcolor: activeCategory === 'Tempos' ? '#6C63FF' : 'transparent',
+                            color: activeCategory === 'Tempos' ? 'white' : 'inherit',
+                            '&:hover': {
+                              bgcolor: activeCategory === 'Tempos' ? '#5a52d5' : 'rgba(0, 0, 0, 0.04)',
+                            }
+                          }}
+                        >
+                          # Tempos
+                        </Button>
+                      </ButtonGroup>
+
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {getVisibleTags().map((tag) => (
+                          <Chip
+                            key={tag}
+                            label={tag}
+                            onClick={() => handleTagClick(tag)}
+                            color={songStyle.includes(tag) ? 'primary' : 'default'}
+                            variant={songStyle.includes(tag) ? 'filled' : 'outlined'}
+                            sx={{ 
+                              borderRadius: '16px',
+                              bgcolor: songStyle.includes(tag) ? '#6C63FF' : 'transparent',
+                              '&:hover': {
+                                bgcolor: songStyle.includes(tag) ? '#5a52d5' : 'rgba(0, 0, 0, 0.04)',
+                              }
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {!isInstrumental && (
+                      <TextField
+                        fullWidth
+                        label="Enter lyrics (optional)"
+                        value={songLyrics}
+                        onChange={(e) => setSongLyrics(e.target.value)}
+                        variant="outlined"
+                        multiline
+                        rows={4}
+                        sx={{ mb: 3 }}
+                        placeholder="Enter your lyrics here or leave empty for AI-generated lyrics"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Describe your song"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    variant="outlined"
+                    multiline
+                    rows={4}
+                    sx={{ mb: 3 }}
+                    placeholder="E.g. A happy pop song about summer with female vocals"
+                  />
+                )}
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: '#6C63FF',
+                        },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#6C63FF',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Display public</span>
+                      <Tooltip title="When enabled, your song will be visible to other users in the community">
+                        <HelpOutlineIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                      </Tooltip>
+                    </Box>
+                  }
+                  sx={{ mb: 3 }}
+                />
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  onClick={handleGenerateMusic}
+                  disabled={loading}
+                  sx={{
+                    py: 2,
+                    borderRadius: '8px',
+                    bgcolor: '#6C63FF',
+                    '&:hover': {
+                      bgcolor: '#5a52d5',
+                    },
+                    fontSize: '1rem',
+                    mb: 2
+                  }}
+                >
+                  {loading ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                      Generating...
+                    </Box>
+                  ) : (
+                    'Generate with AI'
+                  )}
+                </Button>
+
+                <Typography variant="body2" color="text.secondary" align="center">
+                  1 free generation remaining today
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        </Grid>
+
+        {/* Middle section - No music selected state */}
+        <Grid item xs={12} md={6} lg={4} sx={{ display: { xs: 'block', md: 'block' } }}>
+          <Box
+            sx={{
+              height: { md: 'calc(100vh - 100px)', xs: 'auto' },
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              p: 3,
+            }}
+          >
+            {generatedTracks.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  opacity: 0.7,
                 }}
               >
-                Sign in to start creating AI music
-              </Typography>
-            )}
-
-            {generatedTrack && (
-              <Box sx={{ mt: 4, p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Generated Track
+                <Typography variant="h6" color="text.secondary" align="center" gutterBottom>
+                  No music selected
                 </Typography>
-                <audio controls style={{ width: '100%' }}>
-                  <source src={generatedTrack.url} type="audio/mpeg" />
-                  Your browser does not support the audio element.
-                </audio>
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Select a song from the list to start playing
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ width: '100%', maxHeight: '100%', overflowY: 'auto' }}>
+                {generatedTracks.map((track, index) => (
+                  <Box
+                    key={track.trackId || index}
+                    sx={{
+                      mb: 3,
+                      p: 2,
+                      border: '1px solid rgba(0, 0, 0, 0.12)',
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Typography variant="h6" gutterBottom>
+                      {track.title}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', mb: 2 }}>
+                      <Box
+                        component="img"
+                        src={track.coverImage}
+                        alt={track.title}
+                        sx={{
+                          width: 150,
+                          height: 150,
+                          objectFit: 'cover',
+                          borderRadius: 2,
+                          mr: 2,
+                        }}
+                      />
+                      
+                      <Box sx={{ flex: 1 }}>
+                        {track.status === 'completed' ? (
+                          <>
+                            <Typography variant="body2" gutterBottom>
+                              Your song is ready! Click to play.
+                            </Typography>
+                            
+                            <audio
+                              controls
+                              src={track.audioUrl}
+                              style={{ width: '100%', marginTop: '10px' }}
+                            />
+                            
+                            <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                onClick={() => window.open(track.audioUrl, '_blank')}
+                                sx={{ borderRadius: '20px' }}
+                              >
+                                Download
+                              </Button>
+                            </Box>
+                          </>
+                        ) : track.status === 'failed' ? (
+                          <Typography color="error">
+                            Generation failed. Please try again.
+                          </Typography>
+                        ) : (
+                          <Box sx={{ textAlign: 'center', py: 2 }}>
+                            <CircularProgress size={30} sx={{ mb: 2 }} />
+                            <Typography variant="body2">
+                              Generating... {track.generationTime || generationTime}s
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Please wait about 30 seconds, your song will start playing soon
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                ))}
               </Box>
             )}
+          </Box>
+        </Grid>
 
-            <Snackbar 
-              open={Boolean(error)} 
-              autoHideDuration={6000} 
-              onClose={() => setError(null)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-              <Alert severity="error" onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            </Snackbar>
-
-            <Snackbar
-              open={success}
-              autoHideDuration={6000}
-              onClose={() => setSuccess(false)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-              <Alert severity="success" onClose={() => setSuccess(false)}>
-                Music generated successfully!
-              </Alert>
-            </Snackbar>
-
-            <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
-              <Typography variant="h6" gutterBottom>
-                What Our Users Say
+        {/* Right side - My Music */}
+        <Grid item xs={12} lg={3} sx={{ display: { xs: 'none', lg: 'block' } }}>
+          <Box
+            sx={{
+              height: 'calc(100vh - 100px)',
+              overflowY: 'auto',
+              bgcolor: 'background.paper',
+              borderRadius: 2,
+              p: 3,
+              border: '1px solid rgba(0, 0, 0, 0.12)',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" fontWeight="bold">
+                My Music
               </Typography>
-              {testimonials.map((testimonial, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 2, bgcolor: 'rgba(0, 0, 0, 0.02)', borderRadius: 2 }}>
-                  <Box
-                    component="img"
-                    src={testimonial.avatar}
-                    alt={testimonial.name}
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      mr: 2,
-                      border: '2px solid #6C63FF'
-                    }}
-                  />
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                      {testimonial.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {testimonial.role}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <span key={i} role="img" aria-label="star" style={{ color: '#FFD700' }}>⭐</span>
-                      ))}
-                    </Box>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      {testimonial.comment}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
+              <IconButton size="small">
+                <RefreshIcon />
+              </IconButton>
             </Box>
-          </CardContent>
-        </Card>
-      </Container>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Button
+                variant="text"
+                startIcon={<DownloadIcon />}
+                sx={{ color: '#4CAF50', justifyContent: 'flex-start', px: 1 }}
+              >
+                Download
+              </Button>
+            </Box>
+
+            {generatedTracks.length > 0 ? (
+              <List sx={{ mt: 2 }}>
+                {generatedTracks.map((track, index) => (
+                  <React.Fragment key={track.trackId || index}>
+                    <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                      <ListItemAvatar>
+                        <Avatar 
+                          variant="rounded" 
+                          src={track.coverImage}
+                          sx={{ width: 56, height: 56 }}
+                        />
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={track.title}
+                        secondary={
+                          <>
+                            <Typography variant="body2" color="text.primary">
+                              {track.status === 'completed' ? '1m 35s' : `${track.generationTime || generationTime}s`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {track.status === 'completed' 
+                                ? 'You can click to play this song now'
+                                : 'Generating... Please wait'}
+                            </Typography>
+                          </>
+                        }
+                      />
+                    </ListItem>
+                    {index < generatedTracks.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 3, textAlign: 'center' }}>
+                No songs generated yet. Create your first song!
+              </Typography>
+            )}
+          </Box>
+        </Grid>
+      </Grid>
+
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        message={error}
+        action={
+          <IconButton size="small" color="inherit" onClick={() => setError(null)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      />
+
+      <Snackbar
+        open={success}
+        autoHideDuration={6000}
+        onClose={() => setSuccess(false)}
+        message="Song generated successfully!"
+        action={
+          <IconButton size="small" color="inherit" onClick={() => setSuccess(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      />
     </Box>
   );
 };
 
-export default Create; 
+export default Create;
