@@ -40,6 +40,9 @@ import { useTheme } from '@mui/material/styles';
 import { styled } from '@mui/material/styles';
 import MusicService from '../services/musicService';
 import { useUser } from '../contexts/UserContext';
+import EditIcon from '@mui/icons-material/Edit';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import Rating from '@mui/material/Rating';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -52,6 +55,22 @@ const StyledCard = styled(Card)(({ theme }) => ({
   '&:hover': {
     transform: 'translateY(-8px)',
     boxShadow: theme.shadows[8],
+  },
+}));
+
+const StyledIconBox = styled(Box)(({ theme }) => ({
+  width: 80,
+  height: 80,
+  borderRadius: '50%',
+  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: theme.spacing(3),
+  color: 'white',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'rotate(5deg) scale(1.1)',
   },
 }));
 
@@ -76,6 +95,57 @@ const Home = () => {
     Voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
     Tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
   });
+
+  // Define avatars array
+  const avatars = [
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Anita',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily'
+  ];
+
+  // Define steps array
+  const steps = [
+    {
+      title: 'Describe Your Song',
+      description: 'Tell us about the style, mood, and lyrics of your song. Our AI understands your creative vision.',
+      icon: <EditIcon fontSize="large" />,
+    },
+    {
+      title: 'Generate Music',
+      description: 'Click generate and watch as our AI creates a unique song based on your description in seconds.',
+      icon: <AutoAwesomeIcon fontSize="large" />,
+    },
+    {
+      title: 'Download & Share',
+      description: 'Download your song in high quality or share it directly with friends and family.',
+      icon: <MusicNoteIcon fontSize="large" />,
+    },
+  ];
+
+  // Define testimonials array
+  const testimonials = [
+    {
+      name: "Sarah Johnson",
+      role: "Amateur Musician",
+      avatar: "https://this-person-does-not-exist.com/img/avatar-gen11a4f6f5def23b849c695c5449d8d2e3.jpg",
+      text: "Created a personalized birthday song in minutes! My daughter's face lit up when she heard her custom song. Pure magic! ✨"
+    },
+    {
+      name: "Mike Chen",
+      role: "Content Creator",
+      avatar: "https://this-person-does-not-exist.com/img/avatar-gen115af2c1ae6c7e0bb8fc2427b6dcf891.jpg",
+      text: "From idea to finished song in 5 minutes. The quality is unbelievable - sounds like a professional studio production! 🎵"
+    },
+    {
+      name: "Emma Davis",
+      role: "Wedding Planner",
+      avatar: "https://this-person-does-not-exist.com/img/avatar-gen1197cdf5d2d4a16a90c2a986c85e6ee0.jpg",
+      text: "Made a wedding song for my sister. Everyone thought we hired a composer. This AI is revolutionary! 💍"
+    }
+  ];
 
   useEffect(() => {
     loadTags();
