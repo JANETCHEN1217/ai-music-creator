@@ -1,0 +1,3 @@
+[33md6c467e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Redesign Create page with modern UI similar to AI Song Generator, add music player and track display
+[33m2862820[m Fix CORS issues with API calls using CORS proxy
+[33m03239e7[m Update API URL to use cloud-hosted Suno API
