@@ -1,9 +1,16 @@
 import axios from 'axios';
 
-// 使用本地代理服务器地址
+// 获取当前域名作为API基础URL
+const isProduction = process.env.NODE_ENV === 'production';
+const currentDomain = isProduction ? window.location.origin : 'http://localhost:3000';
+
+// Vercel API代理URL
+const VERCEL_PROXY_URL = `${currentDomain}/api/proxy`;
+
+// 使用本地代理服务器地址（仅开发环境）
 const LOCAL_PROXY_URL = 'http://localhost:5000/proxy';
 
-// 备用API配置（保留以防本地代理服务器不可用）
+// 备用API配置（保留以防代理服务器不可用）
 const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://api.sunoapi.com/api';
 const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY || 'cd4c08a93be11e2d434a03705f11068f';
 
@@ -24,23 +31,19 @@ class ApiClient {
   static async request(method, url, data = null, headers = {}, timeout = 15000) {
     const errors = [];
     
-    // 首先尝试使用本地代理服务器
+    // 尝试使用Vercel API代理
     try {
-      // 构建代理URL - 替换原始API URL为本地代理URL
-      let proxyUrl = url;
-      if (url.includes(SUNO_API_URL)) {
-        proxyUrl = url.replace(SUNO_API_URL, LOCAL_PROXY_URL);
-      } else {
-        // 对备用API也使用本地代理
-        for (const baseUrl of BACKUP_API_ENDPOINTS) {
-          if (url.includes(baseUrl)) {
-            proxyUrl = url.replace(baseUrl, LOCAL_PROXY_URL);
-            break;
-          }
-        }
+      let apiPath = '';
+      
+      // 解析原始URL，获取API路径
+      if (url.includes('/api/')) {
+        apiPath = url.split('/api/')[1];
       }
       
-      console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
+      // 构建Vercel代理URL
+      const proxyUrl = `${VERCEL_PROXY_URL}?path=${apiPath}`;
+      
+      console.log(`通过Vercel代理发起 ${method.toUpperCase()} 请求: ${proxyUrl}`);
       if (data) console.log('请求数据:', JSON.stringify(data));
       
       const requestConfig = {
@@ -55,14 +58,54 @@ class ApiClient {
       };
       
       const response = await axios(requestConfig);
-      console.log('本地代理请求成功, 响应数据:', response.data);
+      console.log('Vercel代理请求成功, 响应数据:', response.data);
       return response.data;
     } catch (error) {
-      console.error(`本地代理请求失败: ${error.message}`);
-      errors.push({ proxy: 'local', error: error.message });
+      console.error(`Vercel代理请求失败: ${error.message}`);
+      errors.push({ proxy: 'vercel', error: error.message });
     }
     
-    // 如果本地代理失败，使用后备方法尝试直接请求
+    // 如果Vercel代理失败，尝试使用本地代理服务器（仅开发环境）
+    if (!isProduction) {
+      try {
+        // 构建代理URL - 替换原始API URL为本地代理URL
+        let proxyUrl = url;
+        if (url.includes(SUNO_API_URL)) {
+          proxyUrl = url.replace(SUNO_API_URL, LOCAL_PROXY_URL);
+        } else {
+          // 对备用API也使用本地代理
+          for (const baseUrl of BACKUP_API_ENDPOINTS) {
+            if (url.includes(baseUrl)) {
+              proxyUrl = url.replace(baseUrl, LOCAL_PROXY_URL);
+              break;
+            }
+          }
+        }
+        
+        console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
+        if (data) console.log('请求数据:', JSON.stringify(data));
+        
+        const requestConfig = {
+          method,
+          url: proxyUrl,
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers
+          },
+          timeout,
+          ...(data ? { data } : {})
+        };
+        
+        const response = await axios(requestConfig);
+        console.log('本地代理请求成功, 响应数据:', response.data);
+        return response.data;
+      } catch (error) {
+        console.error(`本地代理请求失败: ${error.message}`);
+        errors.push({ proxy: 'local', error: error.message });
+      }
+    }
+    
+    // 备用方法: 直接请求
     try {
       console.log(`直接发起 ${method.toUpperCase()} 请求到: ${url}`);
       if (data) console.log('请求数据:', JSON.stringify(data));
