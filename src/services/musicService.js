@@ -1,15 +1,47 @@
 import axios from 'axios';
 
-// 更新为正确的 sunoapi.org 的 API 端点
-// 注意：使用 https://api.sunoai.xyz/api 作为备选端点
-const SUNO_API_URL = 'https://api.sunoapi.com/api';
-const SUNO_API_KEY = 'cd4c08a93be11e2d434a03705f11068f'; // 您的 API 密钥
+// 使用环境变量读取 API 设置
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://api.sunoapi.com/api';
+const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY || 'cd4c08a93be11e2d434a03705f11068f';
 
-// 备用 API 端点列表，如果主端点失败，将尝试这些端点
+// 使用环境变量读取备用 API 端点
 const BACKUP_API_ENDPOINTS = [
-  'https://api.sunoai.xyz/api',
-  'https://api-suno.endpoints.acedata.workers.dev'
-];
+  process.env.REACT_APP_SUNO_API_BACKUP_1 || 'https://api.sunoai.xyz/api',
+  process.env.REACT_APP_SUNO_API_BACKUP_2 || 'https://api-suno.endpoints.acedata.workers.dev'
+].filter(Boolean); // 移除空值
+
+// 创建一个带有 axios 实例的工具类，加入 retry 逻辑和错误处理
+class ApiClient {
+  static async request(method, url, data = null, headers = {}, timeout = 15000) {
+    console.log(`发起 ${method.toUpperCase()} 请求到: ${url}`);
+    if (data) console.log('请求数据:', JSON.stringify(data));
+    
+    const requestConfig = {
+      method,
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUNO_API_KEY}`,
+        ...headers
+      },
+      timeout,
+      ...(data ? { data } : {})
+    };
+    
+    try {
+      const response = await axios(requestConfig);
+      console.log('请求成功, 响应数据:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('请求失败:', error.message);
+      if (error.response) {
+        console.error('错误状态码:', error.response.status);
+        console.error('错误响应:', error.response.data);
+      }
+      throw error;
+    }
+  }
+}
 
 class MusicService {
   static async generateTrack({
@@ -22,12 +54,13 @@ class MusicService {
   }) {
     let errors = [];
     
-    // 尝试主 API 端点，然后是备用端点
-    let apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
+    // 尝试所有 API 端点
+    const apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
+    console.log('可用的 API 端点:', apiEndpoints);
     
     for (const baseUrl of apiEndpoints) {
       try {
-        console.log(`尝试使用 API 端点: ${baseUrl}`);
+        console.log(`尝试 API 端点: ${baseUrl}`);
         
         let endpoint = '';
         let requestData = {};
@@ -50,107 +83,86 @@ class MusicService {
           };
         }
 
-        console.log('发送请求到:', endpoint);
-        console.log('请求数据:', JSON.stringify(requestData));
+        const response = await ApiClient.request('post', endpoint, requestData);
 
-        const response = await axios.post(endpoint, requestData, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUNO_API_KEY}`
-          },
-          timeout: 15000 // 15秒超时
-        });
-
-        console.log('收到响应:', response.data);
-
-        if (response.data.error) {
-          throw new Error(response.data.error);
+        if (response.error) {
+          throw new Error(response.error);
         }
 
         return {
-          trackId: response.data.id || response.data.track_id,
-          audioUrl: response.data.audio_url || response.data.url,
-          status: response.data.status || 'pending'
+          trackId: response.id || response.track_id,
+          audioUrl: response.audio_url || response.url,
+          status: response.status || 'pending'
         };
       } catch (error) {
-        console.error(`使用 ${baseUrl} 生成音乐时出错:`, error);
-        errors.push(error);
-        // 记录错误但继续尝试下一个端点
+        console.error(`使用 ${baseUrl} 生成音乐时出错:`, error.message);
+        errors.push({ endpoint: baseUrl, error: error.message });
       }
     }
     
-    // 所有端点都失败了
-    console.error('所有 API 端点都失败了。错误列表:', errors);
-    throw new Error('无法连接到音乐生成服务。请检查您的网络连接并稍后再试。');
+    // 所有端点都失败了 - 返回详细错误信息
+    const errorDetails = errors.map(e => `${e.endpoint}: ${e.error}`).join('\n');
+    console.error('所有 API 端点都失败了。错误详情:\n', errorDetails);
+    throw new Error(`无法连接到音乐生成服务。请检查网络连接或稍后再试。\n详细错误: ${errorDetails}`);
   }
 
   static async checkGenerationStatus(trackId) {
     let errors = [];
     
-    // 尝试主 API 端点，然后是备用端点
-    let apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
+    // 尝试所有 API 端点
+    const apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
     
     for (const baseUrl of apiEndpoints) {
       try {
-        const response = await axios.get(`${baseUrl}/status?id=${trackId}`, {
-          headers: {
-            'Authorization': `Bearer ${SUNO_API_KEY}`
-          },
-          timeout: 10000 // 10秒超时
-        });
+        const endpoint = `${baseUrl}/status?id=${trackId}`;
+        const response = await ApiClient.request('get', endpoint);
         
-        console.log('状态检查响应:', response.data);
-        
-        if (response.data.error) {
-          throw new Error(response.data.error);
+        if (response.error) {
+          throw new Error(response.error);
         }
         
         return {
           id: trackId,
-          audio_url: response.data.audio_url || response.data.url,
-          status: response.data.status
+          audio_url: response.audio_url || response.url,
+          status: response.status
         };
       } catch (error) {
-        console.error(`使用 ${baseUrl} 检查状态时出错:`, error);
-        errors.push(error);
-        // 记录错误但继续尝试下一个端点
+        console.error(`使用 ${baseUrl} 检查状态时出错:`, error.message);
+        errors.push({ endpoint: baseUrl, error: error.message });
       }
     }
     
     // 所有端点都失败了
-    console.error('检查状态时所有 API 端点都失败了。错误列表:', errors);
-    throw new Error('无法检查音乐生成状态。请稍后再试。');
+    const errorDetails = errors.map(e => `${e.endpoint}: ${e.error}`).join('\n');
+    console.error('检查状态时所有 API 端点都失败了。错误详情:\n', errorDetails);
+    throw new Error('无法检查音乐生成状态，请稍后再试。');
   }
 
   static async getQuota() {
     let errors = [];
     
-    // 尝试主 API 端点，然后是备用端点
-    let apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
+    // 尝试所有 API 端点
+    const apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
     
     for (const baseUrl of apiEndpoints) {
       try {
-        const response = await axios.get(`${baseUrl}/quota`, {
-          headers: {
-            'Authorization': `Bearer ${SUNO_API_KEY}`
-          },
-          timeout: 10000 // 10秒超时
-        });
-        return response.data;
+        const endpoint = `${baseUrl}/quota`;
+        const response = await ApiClient.request('get', endpoint);
+        return response;
       } catch (error) {
-        console.error(`使用 ${baseUrl} 检查配额时出错:`, error);
-        errors.push(error);
-        // 记录错误但继续尝试下一个端点
+        console.error(`使用 ${baseUrl} 检查配额时出错:`, error.message);
+        errors.push({ endpoint: baseUrl, error: error.message });
       }
     }
     
     // 所有端点都失败了
-    console.error('检查配额时所有 API 端点都失败了。错误列表:', errors);
-    throw new Error('无法检查配额。请稍后再试。');
+    const errorDetails = errors.map(e => `${e.endpoint}: ${e.error}`).join('\n');
+    console.error('检查配额时所有 API 端点都失败了。错误详情:\n', errorDetails);
+    throw new Error('无法检查配额，请稍后再试。');
   }
 
   static async getTags() {
-    // 使用默认标签，因为 tags API 调用不是必需的
+    // 默认标签，当 API 调用失败时使用
     const defaultTags = {
       genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
       moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
@@ -158,20 +170,16 @@ class MusicService {
       tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
     };
     
-    // 尝试主 API 端点，然后是备用端点
-    let apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
+    // 尝试所有 API 端点
+    const apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
     
     for (const baseUrl of apiEndpoints) {
       try {
-        const response = await axios.get(`${baseUrl}/tags`, {
-          headers: {
-            'Authorization': `Bearer ${SUNO_API_KEY}`
-          },
-          timeout: 10000 // 10秒超时
-        });
-        return response.data;
+        const endpoint = `${baseUrl}/tags`;
+        const response = await ApiClient.request('get', endpoint, null, {}, 5000); // 较短的超时
+        return response || defaultTags;
       } catch (error) {
-        console.log(`使用 ${baseUrl} 获取标签失败，尝试下一个端点`, error);
+        console.log(`使用 ${baseUrl} 获取标签失败:`, error.message);
       }
     }
     
