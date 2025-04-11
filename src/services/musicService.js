@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-// 使用环境变量读取 API 设置
+// 使用本地代理服务器地址
+const LOCAL_PROXY_URL = 'http://localhost:5000/proxy';
+
+// 备用API配置（保留以防本地代理服务器不可用）
 const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://api.sunoapi.com/api';
 const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY || 'cd4c08a93be11e2d434a03705f11068f';
 
@@ -10,19 +13,56 @@ const BACKUP_API_ENDPOINTS = [
   process.env.REACT_APP_SUNO_API_BACKUP_2 || 'https://api-suno.endpoints.acedata.workers.dev'
 ].filter(Boolean); // 移除空值
 
-// 添加 CORS 代理前缀，解决浏览器跨域问题
+// CORS 代理前缀
 const CORS_PROXIES = [
   'https://corsproxy.io/?',
   'https://cors-anywhere.herokuapp.com/'
 ];
 
-// 创建一个带有 axios 实例的工具类，加入 retry 逻辑和错误处理
+// API客户端类
 class ApiClient {
   static async request(method, url, data = null, headers = {}, timeout = 15000) {
-    // 尝试使用 CORS 代理
     const errors = [];
     
-    // 首先尝试不用代理直接请求
+    // 首先尝试使用本地代理服务器
+    try {
+      // 构建代理URL - 替换原始API URL为本地代理URL
+      let proxyUrl = url;
+      if (url.includes(SUNO_API_URL)) {
+        proxyUrl = url.replace(SUNO_API_URL, LOCAL_PROXY_URL);
+      } else {
+        // 对备用API也使用本地代理
+        for (const baseUrl of BACKUP_API_ENDPOINTS) {
+          if (url.includes(baseUrl)) {
+            proxyUrl = url.replace(baseUrl, LOCAL_PROXY_URL);
+            break;
+          }
+        }
+      }
+      
+      console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
+      if (data) console.log('请求数据:', JSON.stringify(data));
+      
+      const requestConfig = {
+        method,
+        url: proxyUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        },
+        timeout,
+        ...(data ? { data } : {})
+      };
+      
+      const response = await axios(requestConfig);
+      console.log('本地代理请求成功, 响应数据:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`本地代理请求失败: ${error.message}`);
+      errors.push({ proxy: 'local', error: error.message });
+    }
+    
+    // 如果本地代理失败，使用后备方法尝试直接请求
     try {
       console.log(`直接发起 ${method.toUpperCase()} 请求到: ${url}`);
       if (data) console.log('请求数据:', JSON.stringify(data));
@@ -40,14 +80,14 @@ class ApiClient {
       };
       
       const response = await axios(requestConfig);
-      console.log('请求成功, 响应数据:', response.data);
+      console.log('直接请求成功, 响应数据:', response.data);
       return response.data;
     } catch (error) {
       console.log(`直接请求失败: ${error.message}，尝试使用 CORS 代理`);
       errors.push({ proxy: 'direct', error: error.message });
     }
     
-    // 如果直接请求失败，尝试使用 CORS 代理
+    // 最后尝试使用 CORS 代理
     for (const proxy of CORS_PROXIES) {
       try {
         const proxyUrl = `${proxy}${url}`;
