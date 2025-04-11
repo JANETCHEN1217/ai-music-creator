@@ -192,7 +192,7 @@ class MusicService {
           // 灵感模式
           requestData = {
             "myVersion": "chirp-v4",
-            "inputType": "io",
+            "inputType": "10",
             "makeInstrumental": isInstrumental === true ? "true" : "false", 
             "gptDescriptionPrompt": description || "一首愉快的阳光歌曲",
             "callbackUrl": ""

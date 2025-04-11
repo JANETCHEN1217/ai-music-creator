@@ -95,7 +95,7 @@ module.exports = async (req, res) => {
             // 灵感模式
             const newBody = {
               myVersion: "chirp-v4", 
-              inputType: "io",
+              inputType: "10",
               makeInstrumental: req.body.is_instrumental === true ? "true" : "false",
               gptDescriptionPrompt: req.body.prompt || "一首愉快的阳光歌曲",
               callbackUrl: ""
