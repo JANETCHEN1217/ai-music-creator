@@ -10,36 +10,75 @@ const BACKUP_API_ENDPOINTS = [
   process.env.REACT_APP_SUNO_API_BACKUP_2 || 'https://api-suno.endpoints.acedata.workers.dev'
 ].filter(Boolean); // 移除空值
 
+// 添加 CORS 代理前缀，解决浏览器跨域问题
+const CORS_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://cors-anywhere.herokuapp.com/'
+];
+
 // 创建一个带有 axios 实例的工具类，加入 retry 逻辑和错误处理
 class ApiClient {
   static async request(method, url, data = null, headers = {}, timeout = 15000) {
-    console.log(`发起 ${method.toUpperCase()} 请求到: ${url}`);
-    if (data) console.log('请求数据:', JSON.stringify(data));
+    // 尝试使用 CORS 代理
+    const errors = [];
     
-    const requestConfig = {
-      method,
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUNO_API_KEY}`,
-        ...headers
-      },
-      timeout,
-      ...(data ? { data } : {})
-    };
-    
+    // 首先尝试不用代理直接请求
     try {
+      console.log(`直接发起 ${method.toUpperCase()} 请求到: ${url}`);
+      if (data) console.log('请求数据:', JSON.stringify(data));
+      
+      const requestConfig = {
+        method,
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUNO_API_KEY}`,
+          ...headers
+        },
+        timeout,
+        ...(data ? { data } : {})
+      };
+      
       const response = await axios(requestConfig);
       console.log('请求成功, 响应数据:', response.data);
       return response.data;
     } catch (error) {
-      console.error('请求失败:', error.message);
-      if (error.response) {
-        console.error('错误状态码:', error.response.status);
-        console.error('错误响应:', error.response.data);
-      }
-      throw error;
+      console.log(`直接请求失败: ${error.message}，尝试使用 CORS 代理`);
+      errors.push({ proxy: 'direct', error: error.message });
     }
+    
+    // 如果直接请求失败，尝试使用 CORS 代理
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const proxyUrl = `${proxy}${url}`;
+        console.log(`通过代理 ${proxy} 发起 ${method.toUpperCase()} 请求到: ${url}`);
+        if (data) console.log('请求数据:', JSON.stringify(data));
+        
+        const requestConfig = {
+          method,
+          url: proxyUrl,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUNO_API_KEY}`,
+            'X-Requested-With': 'XMLHttpRequest',
+            ...headers
+          },
+          timeout,
+          ...(data ? { data } : {})
+        };
+        
+        const response = await axios(requestConfig);
+        console.log('请求成功, 响应数据:', response.data);
+        return response.data;
+      } catch (error) {
+        console.error(`使用代理 ${proxy} 请求失败:`, error.message);
+        errors.push({ proxy, error: error.message });
+      }
+    }
+    
+    // 所有尝试都失败
+    console.error('所有请求方式都失败:', errors);
+    throw new Error(`请求失败: ${errors.map(e => `${e.proxy}: ${e.error}`).join(', ')}`);
   }
 }
 
