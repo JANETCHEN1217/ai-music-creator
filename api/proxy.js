@@ -2,7 +2,7 @@
 const axios = require('axios');
 
 // 获取API配置
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://api.sunoapi.com/api';
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn/api';
 const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY || 'cd4c08a93be11e2d434a03705f11068f';
 
 // 设置CORS响应头
@@ -48,6 +48,16 @@ module.exports = async (req, res) => {
       apiPath = req.url.split('/api/proxy/')[1].split('?')[0];
     }
     
+    // 处理特殊路径转换
+    if (apiPath === 'generate') {
+      apiPath = 'open/suno/music/generate';
+    } else if (apiPath === 'status' && req.query.id) {
+      // 将旧的id参数转换为taskId参数
+      apiPath = 'status';
+      req.query.taskId = req.query.id;
+      delete req.query.id;
+    }
+    
     // 构建完整API URL
     const apiUrl = `${SUNO_API_URL}/${apiPath}`;
     console.log(`代理请求到: ${apiUrl}`);
@@ -64,8 +74,42 @@ module.exports = async (req, res) => {
 
     // 如果是POST请求，附加请求体
     if (req.method === 'POST' && req.body) {
-      requestConfig.data = req.body;
-      console.log('请求数据:', JSON.stringify(req.body));
+      // 处理generate请求的数据转换
+      if (apiPath === 'open/suno/music/generate') {
+        // 处理旧的API格式转换为新的格式
+        if (req.body.prompt || req.body.is_instrumental !== undefined) {
+          // 判断需要使用哪种模式
+          if (req.body.lyrics || req.body.title) {
+            // 自定义模式
+            const newBody = {
+              myVersion: "chirp-v4",
+              inputType: "20",
+              makeInstrumental: req.body.is_instrumental === true ? "true" : "false",
+              prompt: req.body.lyrics || "",
+              tags: req.body.style || "",
+              title: req.body.title || req.body.prompt || "我的歌曲",
+              callbackUrl: ""
+            };
+            requestConfig.data = newBody;
+          } else {
+            // 灵感模式
+            const newBody = {
+              myVersion: "chirp-v4", 
+              inputType: "io",
+              makeInstrumental: req.body.is_instrumental === true ? "true" : "false",
+              gptDescriptionPrompt: req.body.prompt || "一首愉快的阳光歌曲",
+              callbackUrl: ""
+            };
+            requestConfig.data = newBody;
+          }
+        } else {
+          // 已经是新格式，不需要转换
+          requestConfig.data = req.body;
+        }
+      } else {
+        requestConfig.data = req.body;
+      }
+      console.log('请求数据:', JSON.stringify(requestConfig.data));
     }
 
     // 如果是GET请求，附加查询参数

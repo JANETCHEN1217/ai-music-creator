@@ -10,15 +10,12 @@ const VERCEL_PROXY_URL = `${currentDomain}/api/proxy`;
 // 使用本地代理服务器地址（仅开发环境）
 const LOCAL_PROXY_URL = 'http://localhost:5000/proxy';
 
-// 备用API配置（保留以防代理服务器不可用）
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://api.sunoapi.com/api';
+// 新的API配置
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn/api';
 const SUNO_API_KEY = process.env.REACT_APP_SUNO_API_KEY || 'cd4c08a93be11e2d434a03705f11068f';
 
-// 使用环境变量读取备用 API 端点
-const BACKUP_API_ENDPOINTS = [
-  process.env.REACT_APP_SUNO_API_BACKUP_1 || 'https://api.sunoai.xyz/api',
-  process.env.REACT_APP_SUNO_API_BACKUP_2 || 'https://api-suno.endpoints.acedata.workers.dev'
-].filter(Boolean); // 移除空值
+// 使用环境变量读取备用 API 端点 (仅保留新API)
+const BACKUP_API_ENDPOINTS = [];
 
 // CORS 代理前缀
 const CORS_PROXIES = [
@@ -176,44 +173,55 @@ class MusicService {
   }) {
     let errors = [];
     
-    // 尝试所有 API 端点
-    const apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
-    console.log('可用的 API 端点:', apiEndpoints);
+    // 尝试API端点
+    const apiEndpoints = [SUNO_API_URL];
+    console.log('可用的API端点:', apiEndpoints);
     
     for (const baseUrl of apiEndpoints) {
       try {
-        console.log(`尝试 API 端点: ${baseUrl}`);
+        console.log(`尝试API端点: ${baseUrl}`);
         
-        let endpoint = '';
+        // 构建请求数据
+        const endpoint = `${baseUrl}/open/suno/music/generate`;
+        
+        // 创建符合API格式的请求数据
+        // 根据mode选择灵感模式或自定义模式
         let requestData = {};
-
-        // 根据模式选择不同的 API 端点
+        
         if (mode === 'simple') {
-          endpoint = `${baseUrl}/generate`;
+          // 灵感模式
           requestData = {
-            prompt: description || "Happy music",
-            duration
+            "myVersion": "chirp-v4",
+            "inputType": "io",
+            "makeInstrumental": isInstrumental === true ? "true" : "false", 
+            "gptDescriptionPrompt": description || "一首愉快的阳光歌曲",
+            "callbackUrl": ""
           };
         } else {
-          endpoint = `${baseUrl}/custom-generate`;
+          // 自定义模式
           requestData = {
-            title: Array.isArray(style) ? style.join(', ') : style,
-            prompt: description || "Happy music",
-            lyrics: lyrics || '',
-            is_instrumental: isInstrumental,
-            duration
+            "myVersion": "chirp-v4",
+            "inputType": "20",
+            "makeInstrumental": isInstrumental === true ? "true" : "false",
+            "prompt": lyrics || "",
+            "tags": Array.isArray(style) ? style.join(',') : style,
+            "title": (Array.isArray(style) ? style.join(' ') : style) || description || "我的歌曲",
+            "callbackUrl": ""
           };
         }
-
+        
+        console.log('请求数据:', requestData);
+        
         const response = await ApiClient.request('post', endpoint, requestData);
 
         if (response.error) {
           throw new Error(response.error);
         }
 
+        // 根据新API的响应格式解析结果
         return {
-          trackId: response.id || response.track_id,
-          audioUrl: response.audio_url || response.url,
+          trackId: response.id || response.taskId || response.track_id || "",
+          audioUrl: response.audioUrl || response.audio_url || response.url || "",
           status: response.status || 'pending'
         };
       } catch (error) {
@@ -222,21 +230,22 @@ class MusicService {
       }
     }
     
-    // 所有端点都失败了 - 返回详细错误信息
+    // API调用失败 - 返回详细错误信息
     const errorDetails = errors.map(e => `${e.endpoint}: ${e.error}`).join('\n');
-    console.error('所有 API 端点都失败了。错误详情:\n', errorDetails);
+    console.error('API端点调用失败。错误详情:\n', errorDetails);
     throw new Error(`无法连接到音乐生成服务。请检查网络连接或稍后再试。\n详细错误: ${errorDetails}`);
   }
 
   static async checkGenerationStatus(trackId) {
     let errors = [];
     
-    // 尝试所有 API 端点
-    const apiEndpoints = [SUNO_API_URL, ...BACKUP_API_ENDPOINTS];
+    // 尝试API端点
+    const apiEndpoints = [SUNO_API_URL];
     
     for (const baseUrl of apiEndpoints) {
       try {
-        const endpoint = `${baseUrl}/status?id=${trackId}`;
+        // 更新为新的状态检查端点
+        const endpoint = `${baseUrl}/status?taskId=${trackId}`;
         const response = await ApiClient.request('get', endpoint);
         
         if (response.error) {
@@ -245,8 +254,8 @@ class MusicService {
         
         return {
           id: trackId,
-          audio_url: response.audio_url || response.url,
-          status: response.status
+          audio_url: response.audioUrl || response.audio_url || response.url || "",
+          status: response.status || response.processStatus || 'pending'
         };
       } catch (error) {
         console.error(`使用 ${baseUrl} 检查状态时出错:`, error.message);
@@ -254,9 +263,9 @@ class MusicService {
       }
     }
     
-    // 所有端点都失败了
+    // API调用失败
     const errorDetails = errors.map(e => `${e.endpoint}: ${e.error}`).join('\n');
-    console.error('检查状态时所有 API 端点都失败了。错误详情:\n', errorDetails);
+    console.error('检查状态时API调用失败。错误详情:\n', errorDetails);
     throw new Error('无法检查音乐生成状态，请稍后再试。');
   }
 
