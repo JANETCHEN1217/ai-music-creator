@@ -16,6 +16,9 @@ import { useUser } from '../contexts/UserContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import MusicService from '../services/musicService';
 
+const SUNO_API_URL = 'https://api.sunoapi.org/api';
+const SUNO_API_KEY = 'cd4c08a93be11e2d434a03705f11068f';
+
 const Navbar = () => {
   const { user, logout } = useUser();
   const [anchorEl, setAnchorEl] = React.useState(null);
