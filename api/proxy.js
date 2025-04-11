@@ -31,40 +31,46 @@ module.exports = async (req, res) => {
 
   try {
     // 从URL获取API路径
-    const rawPath = req.query.path || '';
+    let apiPath = '';
     
-    // 确保有API路径
-    if (!rawPath && !req.url.includes('/api/proxy/')) {
-      console.error('缺少API路径参数');
-      return res.status(400).json({ error: '缺少API路径参数' });
-    }
-    
-    // 提取API路径 - 处理两种可能的URL格式:
+    // 处理两种可能的URL格式:
     // 1. /api/proxy?path=xxx 
     // 2. /api/proxy/xxx
-    let apiPath = '';
-    if (rawPath) {
-      apiPath = rawPath;
+    if (req.query.path) {
+      apiPath = req.query.path;
     } else if (req.url.includes('/api/proxy/')) {
       apiPath = req.url.split('/api/proxy/')[1].split('?')[0];
     }
     
-    // 确保apiPath没有多余的proxy部分
-    apiPath = apiPath.replace(/^proxy\//, '');
+    // 确保有API路径
+    if (!apiPath) {
+      console.error('缺少API路径参数');
+      return res.status(400).json({ error: '缺少API路径参数' });
+    }
     
-    // 构建完整API URL - 根据apipost文档
+    // 移除可能的前导斜杠
+    apiPath = apiPath.replace(/^\//, '');
+    
+    // 构建完整API URL
+    // 处理 _open 格式的API路径
     let apiUrl;
-    if (apiPath === 'generate') {
-      apiUrl = `${SUNO_API_URL}/open/suno/music/generate`;
-    } else if (apiPath === 'status') {
-      apiUrl = `${SUNO_API_URL}/open/suno/music/status`;
-      // 将旧的id参数转换为taskId参数
-      if (req.query.id && !req.query.taskId) {
-        req.query.taskId = req.query.id;
-        delete req.query.id;
-      }
+    if (apiPath.startsWith('_open/')) {
+      // 直接转换 _open/suno/music/xxx 格式为 /open/suno/music/xxx
+      apiUrl = `${SUNO_API_URL}/${apiPath.replace('_open/', '')}`;
     } else {
-      apiUrl = `${SUNO_API_URL}/${apiPath}`;
+      // 处理旧格式路径
+      if (apiPath === 'generate') {
+        apiUrl = `${SUNO_API_URL}/open/suno/music/generate`;
+      } else if (apiPath === 'status' || apiPath === 'getState') {
+        apiUrl = `${SUNO_API_URL}/open/suno/music/getState`;
+        // 将旧的id参数转换为taskBatchId参数
+        if (req.query.id && !req.query.taskBatchId) {
+          req.query.taskBatchId = req.query.id;
+          delete req.query.id;
+        }
+      } else {
+        apiUrl = `${SUNO_API_URL}/${apiPath}`;
+      }
     }
     
     console.log(`代理请求到: ${apiUrl}`);
@@ -84,16 +90,17 @@ module.exports = async (req, res) => {
 
     // 如果是POST请求，附加请求体
     if (req.method === 'POST' && req.body) {
-      // 构建符合文档的请求正文
-      if (apiPath === 'generate') {
-        // 确保使用正确的参数格式
+      // 直接使用请求体，确保参数命名正确
+      if (apiPath === 'generate' || apiPath === '_open/suno/music/generate' || apiPath.includes('/suno/music/generate')) {
+        // 确保使用正确的参数格式 (mvVersion 而不是 myVersion)
         const newBody = {
-          myVersion: req.body.myVersion || "chirp-v4",
-          inputType: req.body.inputType || "10",
-          makeInstrumental: req.body.makeInstrumental || "false",
-          gptDescriptionPrompt: req.body.gptDescriptionPrompt || "",
-          callbackUrl: req.body.callbackUrl || ""
+          ...req.body,
+          mvVersion: req.body.mvVersion || req.body.myVersion || "chirp-v4"
         };
+        
+        // 移除错误的参数名
+        if (newBody.myVersion) delete newBody.myVersion;
+        
         requestConfig.data = newBody;
       } else {
         requestConfig.data = req.body;

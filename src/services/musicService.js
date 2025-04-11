@@ -26,7 +26,7 @@ const CORS_PROXIES = [
 
 // API客户端类
 class ApiClient {
-  static async request(method, url, data = null, headers = {}, timeout = 15000) {
+  static async request(method, endpointPath, data = null, headers = {}, timeout = 15000) {
     const errors = [];
     
     // 添加认证头
@@ -36,14 +36,20 @@ class ApiClient {
       ...headers
     };
     
+    // 确保路径格式正确（移除前导斜杠）
+    const normalizedPath = endpointPath.replace(/^\//, '');
+    
+    // 构建 Vercel 代理 URL
+    const proxyUrl = `${VERCEL_PROXY_URL}/${normalizedPath}`;
+    
     // 尝试使用Vercel API代理
     try {
-      console.log(`通过Vercel代理发起 ${method.toUpperCase()} 请求: ${url}`);
+      console.log(`通过Vercel代理发起 ${method.toUpperCase()} 请求: ${proxyUrl}`);
       if (data) console.log('请求数据:', JSON.stringify(data));
       
       const requestConfig = {
         method,
-        url,
+        url: proxyUrl,
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders
@@ -63,10 +69,7 @@ class ApiClient {
       if (!isProduction) {
         try {
           // 构建代理URL
-          let proxyUrl = url;
-          if (url.includes(SUNO_API_URL)) {
-            proxyUrl = url.replace(SUNO_API_URL, LOCAL_PROXY_URL);
-          }
+          let proxyUrl = `${LOCAL_PROXY_URL}/${normalizedPath}`;
           
           console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
           if (data) console.log('请求数据:', JSON.stringify(data));
@@ -111,13 +114,13 @@ class MusicService {
     try {
       console.log('开始生成音乐');
       
-      // 创建符合API格式的请求数据
+      // 创建符合API格式的请求数据 - 确保使用 mvVersion 而不是 myVersion
       let requestData = {};
       
       if (mode === 'simple') {
         // 灵感模式
         requestData = {
-          "mvVersion": "chirp-v4",
+          "mvVersion": "chirp-v4", // 注意这里使用 mvVersion 而不是 myVersion
           "inputType": "10",
           "makeInstrumental": isInstrumental === true ? "true" : "false", 
           "gptDescriptionPrompt": description || "一首愉快的阳光歌曲",
@@ -126,7 +129,7 @@ class MusicService {
       } else {
         // 自定义模式
         requestData = {
-          "mvVersion": "chirp-v4",
+          "mvVersion": "chirp-v4", // 注意这里使用 mvVersion 而不是 myVersion
           "inputType": "20",
           "makeInstrumental": isInstrumental === true ? "true" : "false",
           "prompt": lyrics || "",
@@ -140,11 +143,11 @@ class MusicService {
       
       console.log('请求数据:', requestData);
       
-      // 使用代理服务进行API调用
+      // 使用正确的 API 路径格式
       const endpoint = `_open/suno/music/generate`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}`;
       
-      const response = await ApiClient.request('post', proxyUrl, requestData);
+      // 直接传递 endpoint 路径给 request 方法
+      const response = await ApiClient.request('post', endpoint, requestData);
 
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "创建音乐失败");
@@ -164,12 +167,11 @@ class MusicService {
   // 检查音乐生成状态
   static async checkGenerationStatus(trackId) {
     try {
-      // 直接使用代理服务
-      const endpoint = `_open/suno/music/getState`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}?taskBatchId=${trackId}`;
-      console.log(`通过代理检查状态: ${proxyUrl}`);
+      // 使用正确的 API 路径格式
+      const endpoint = `_open/suno/music/getState?taskBatchId=${trackId}`;
       
-      const response = await ApiClient.request('get', proxyUrl);
+      // 直接传递完整路径给 request 方法
+      const response = await ApiClient.request('get', endpoint);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "检查音乐状态失败");
@@ -189,10 +191,11 @@ class MusicService {
   // 生成歌词
   static async generateLyrics(prompt) {
     try {
+      // 使用正确的 API 路径格式
       const endpoint = `_open/suno/music/generateLyrics`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}`;
       
-      const response = await ApiClient.request('post', proxyUrl, { prompt });
+      // 直接传递 endpoint 路径给 request 方法
+      const response = await ApiClient.request('post', endpoint, { prompt });
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "生成歌词失败");
@@ -230,10 +233,11 @@ class MusicService {
   // 伴奏分离
   static async separateVocalAndInstrumental(clipId) {
     try {
-      const endpoint = `_open/suno/music/stems`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}?clipId=${clipId}`;
+      // 使用正确的 API 路径格式
+      const endpoint = `_open/suno/music/stems?clipId=${clipId}`;
       
-      const response = await ApiClient.request('get', proxyUrl);
+      // 直接传递完整路径给 request 方法
+      const response = await ApiClient.request('get', endpoint);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "伴奏分离失败");
@@ -249,60 +253,17 @@ class MusicService {
     }
   }
 
-  // 获取高音质WAV
+  // 获取高质量WAV文件
   static async getWavFile(clipId) {
     try {
-      const endpoint = `_open/suno/music/getWavFile`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}?clipId=${clipId}`;
+      // 使用正确的 API 路径格式
+      const endpoint = `_open/suno/music/wav?clipId=${clipId}`;
       
-      const response = await ApiClient.request('get', proxyUrl);
+      // 直接传递完整路径给 request 方法
+      const response = await ApiClient.request('get', endpoint);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "获取WAV文件失败");
-      }
-      
-      return {
-        url: response.data.url || "",
-        size: response.data.size || ""
-      };
-    } catch (error) {
-      console.error(`获取WAV文件时出错:`, error.message);
-      throw new Error('无法获取高音质WAV文件，请稍后再试。');
-    }
-  }
-
-  // 获取用户的音乐列表
-  static async getMusicHistory(pageNum = 1, pageSize = 10) {
-    try {
-      const endpoint = `_open/suno/music/myMusics`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}?pageNum=${pageNum}&pageSize=${pageSize}`;
-      
-      const response = await ApiClient.request('get', proxyUrl);
-      
-      if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "获取音乐列表失败");
-      }
-      
-      return {
-        total: response.total || 0,
-        data: response.data || []
-      };
-    } catch (error) {
-      console.error(`获取音乐列表时出错:`, error.message);
-      throw new Error('无法获取音乐列表，请稍后再试。');
-    }
-  }
-
-  // 合并整首歌
-  static async concatenateTrack(clipId) {
-    try {
-      const endpoint = `_open/suno/music/concat`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}?clipId=${clipId}`;
-      
-      const response = await ApiClient.request('get', proxyUrl);
-      
-      if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "合并整首歌失败");
       }
       
       return {
@@ -310,27 +271,74 @@ class MusicService {
         items: response.data.items || []
       };
     } catch (error) {
-      console.error(`合并整首歌时出错:`, error.message);
-      throw new Error('无法合并整首歌，请稍后再试。');
+      console.error(`获取WAV文件时出错:`, error.message);
+      throw new Error('无法获取高质量WAV文件，请稍后再试。');
     }
   }
 
-  // 获取歌词/音频时间线
-  static async getLyricTiming(clipId) {
+  // 获取音乐历史记录
+  static async getMusicHistory(pageNum = 1, pageSize = 10) {
     try {
-      const endpoint = `_open/suno/music/timing`;
-      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}?clipId=${clipId}`;
+      // 使用正确的 API 路径格式
+      const endpoint = `_open/suno/music/my?pageNum=${pageNum}&pageSize=${pageSize}`;
       
-      const response = await ApiClient.request('get', proxyUrl);
+      // 直接传递完整路径给 request 方法
+      const response = await ApiClient.request('get', endpoint);
       
       if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "获取歌词时间线失败");
+        throw new Error(response.error || response.msg || "获取历史记录失败");
+      }
+      
+      return {
+        list: response.data.list || [],
+        total: response.data.total || 0
+      };
+    } catch (error) {
+      console.error(`获取历史记录时出错:`, error.message);
+      throw new Error('无法获取音乐历史记录，请稍后再试。');
+    }
+  }
+
+  // 拼接音乐片段
+  static async concatenateTrack(clipId) {
+    try {
+      // 使用正确的 API 路径格式
+      const endpoint = `_open/suno/music/concat`;
+      
+      // 直接传递 endpoint 路径给 request 方法
+      const response = await ApiClient.request('post', endpoint, { clipId });
+      
+      if (response.error || response.code !== 200) {
+        throw new Error(response.error || response.msg || "拼接音乐片段失败");
+      }
+      
+      return {
+        taskBatchId: response.data.taskBatchId || "",
+        items: response.data.items || []
+      };
+    } catch (error) {
+      console.error(`拼接音乐片段时出错:`, error.message);
+      throw new Error('无法拼接音乐片段，请稍后再试。');
+    }
+  }
+
+  // 获取歌词定时信息
+  static async getLyricTiming(clipId) {
+    try {
+      // 使用正确的 API 路径格式
+      const endpoint = `_open/suno/music/lyricTime?clipId=${clipId}`;
+      
+      // 直接传递完整路径给 request 方法
+      const response = await ApiClient.request('get', endpoint);
+      
+      if (response.error || response.code !== 200) {
+        throw new Error(response.error || response.msg || "获取歌词定时信息失败");
       }
       
       return response.data || {};
     } catch (error) {
-      console.error(`获取歌词时间线时出错:`, error.message);
-      throw new Error('无法获取歌词时间线，请稍后再试。');
+      console.error(`获取歌词定时信息时出错:`, error.message);
+      throw new Error('无法获取歌词定时信息，请稍后再试。');
     }
   }
 }
