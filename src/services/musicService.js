@@ -4,7 +4,7 @@ import axios from 'axios';
 const isProduction = process.env.NODE_ENV === 'production';
 const currentDomain = isProduction ? window.location.origin : 'http://localhost:3000';
 
-// Vercel API代理URL
+// Vercel API代理URL（不带尾部斜杠）
 const VERCEL_PROXY_URL = `${currentDomain}/api/proxy`;
 
 // 使用本地代理服务器地址（仅开发环境）
@@ -33,15 +33,15 @@ class ApiClient {
     
     // 尝试使用Vercel API代理
     try {
-      let apiPath = '';
-      
       // 解析原始URL，获取API路径
+      let apiEndpoint = '';
+      
       if (url.includes('/api/')) {
-        apiPath = url.split('/api/')[1];
+        apiEndpoint = url.split('/api/')[1];
       }
       
-      // 构建Vercel代理URL
-      const proxyUrl = `${VERCEL_PROXY_URL}?path=${apiPath}`;
+      // 构建Vercel代理URL - 使用路径格式而不是查询参数
+      const proxyUrl = `${VERCEL_PROXY_URL}/${apiEndpoint}`;
       
       console.log(`通过Vercel代理发起 ${method.toUpperCase()} 请求: ${proxyUrl}`);
       if (data) console.log('请求数据:', JSON.stringify(data));

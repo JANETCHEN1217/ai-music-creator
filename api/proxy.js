@@ -21,22 +21,37 @@ const handleOptions = (req, res) => {
 };
 
 module.exports = async (req, res) => {
+  console.log('收到API代理请求:', req.method, req.url);
+  
   // 处理CORS预检请求
   if (req.method === 'OPTIONS') {
     return handleOptions(req, res);
   }
 
-  // 从URL获取API路径
-  const apiPath = req.query.path || '';
-  if (!apiPath) {
-    return res.status(400).json({ error: '缺少API路径参数' });
-  }
-
-  // 构建API URL
-  const apiUrl = `${SUNO_API_URL}/${apiPath}`;
-  console.log(`代理请求到: ${apiUrl}`);
-
   try {
+    // 从URL获取API路径
+    const rawPath = req.query.path || '';
+    
+    // 确保有API路径
+    if (!rawPath && !req.url.includes('/api/proxy/')) {
+      console.error('缺少API路径参数');
+      return res.status(400).json({ error: '缺少API路径参数' });
+    }
+    
+    // 提取API路径 - 处理两种可能的URL格式:
+    // 1. /api/proxy?path=xxx 
+    // 2. /api/proxy/xxx
+    let apiPath = '';
+    if (rawPath) {
+      apiPath = rawPath;
+    } else if (req.url.includes('/api/proxy/')) {
+      apiPath = req.url.split('/api/proxy/')[1].split('?')[0];
+    }
+    
+    // 构建完整API URL
+    const apiUrl = `${SUNO_API_URL}/${apiPath}`;
+    console.log(`代理请求到: ${apiUrl}`);
+
     // 设置请求配置
     const requestConfig = {
       method: req.method,
@@ -53,16 +68,27 @@ module.exports = async (req, res) => {
       console.log('请求数据:', JSON.stringify(req.body));
     }
 
-    // 如果是GET请求，附加查询参数（除了path参数）
-    if (req.method === 'GET' && req.query) {
-      const { path, ...queryParams } = req.query;
-      if (Object.keys(queryParams).length > 0) {
-        requestConfig.params = queryParams;
+    // 如果是GET请求，附加查询参数
+    if (req.method === 'GET') {
+      const urlParts = req.url.split('?');
+      if (urlParts.length > 1) {
+        // 保留原始查询参数（除了path）
+        const queryString = urlParts[1];
+        const searchParams = new URLSearchParams(queryString);
+        searchParams.delete('path'); // 删除path参数
+        
+        // 将剩余参数添加到API URL
+        const remainingParams = searchParams.toString();
+        if (remainingParams) {
+          requestConfig.url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + remainingParams;
+        }
       }
     }
 
     // 发送请求到目标API
+    console.log('发送代理请求:', requestConfig.method, requestConfig.url);
     const response = await axios(requestConfig);
+    console.log('API响应成功');
     
     // 返回API响应
     return res.status(response.status || 200)
