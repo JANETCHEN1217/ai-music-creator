@@ -182,7 +182,8 @@ class MusicService {
         console.log(`尝试API端点: ${baseUrl}`);
         
         // 构建请求数据
-        const endpoint = `${baseUrl}/open/suno/music/generate`;
+        // 注意: 使用相对路径，让代理服务器处理完整URL
+        const endpoint = `generate`;
         
         // 创建符合API格式的请求数据
         // 根据mode选择灵感模式或自定义模式
@@ -212,7 +213,11 @@ class MusicService {
         
         console.log('请求数据:', requestData);
         
-        const response = await ApiClient.request('post', endpoint, requestData);
+        // 使用代理服务进行API调用
+        const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}`;
+        console.log(`通过代理发起请求: ${proxyUrl}`);
+        
+        const response = await ApiClient.request('post', proxyUrl, requestData);
 
         if (response.error) {
           throw new Error(response.error);
@@ -239,34 +244,32 @@ class MusicService {
   static async checkGenerationStatus(trackId) {
     let errors = [];
     
-    // 尝试API端点
-    const apiEndpoints = [SUNO_API_URL];
-    
-    for (const baseUrl of apiEndpoints) {
-      try {
-        // 更新为新的状态检查端点
-        const endpoint = `${baseUrl}/status?taskId=${trackId}`;
-        const response = await ApiClient.request('get', endpoint);
-        
-        if (response.error) {
-          throw new Error(response.error);
-        }
-        
-        return {
-          id: trackId,
-          audio_url: response.audioUrl || response.audio_url || response.url || "",
-          status: response.status || response.processStatus || 'pending'
-        };
-      } catch (error) {
-        console.error(`使用 ${baseUrl} 检查状态时出错:`, error.message);
-        errors.push({ endpoint: baseUrl, error: error.message });
+    try {
+      // 直接使用代理服务
+      const endpoint = `status?taskId=${trackId}`;
+      const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}`;
+      console.log(`通过代理检查状态: ${proxyUrl}`);
+      
+      const response = await ApiClient.request('get', proxyUrl);
+      
+      if (response.error) {
+        throw new Error(response.error);
       }
+      
+      return {
+        id: trackId,
+        audio_url: response.audioUrl || response.audio_url || response.url || "",
+        status: response.status || response.processStatus || 'pending'
+      };
+    } catch (error) {
+      console.error(`检查状态时出错:`, error.message);
+      errors.push({ error: error.message });
+      
+      // API调用失败
+      const errorDetails = errors.map(e => e.error).join('\n');
+      console.error('检查状态时API调用失败。错误详情:\n', errorDetails);
+      throw new Error('无法检查音乐生成状态，请稍后再试。');
     }
-    
-    // API调用失败
-    const errorDetails = errors.map(e => `${e.endpoint}: ${e.error}`).join('\n');
-    console.error('检查状态时API调用失败。错误详情:\n', errorDetails);
-    throw new Error('无法检查音乐生成状态，请稍后再试。');
   }
 
   static async getQuota() {

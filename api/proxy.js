@@ -48,18 +48,24 @@ module.exports = async (req, res) => {
       apiPath = req.url.split('/api/proxy/')[1].split('?')[0];
     }
     
-    // 处理特殊路径转换
-    if (apiPath === 'generate') {
-      apiPath = 'open/suno/music/generate';
+    // 正确处理API路径
+    if (apiPath === 'generate' || apiPath === 'open/suno/music/generate') {
+      apiPath = '/open/suno/music/generate';
     } else if (apiPath === 'status' && req.query.id) {
       // 将旧的id参数转换为taskId参数
-      apiPath = 'status';
+      apiPath = '/status';
       req.query.taskId = req.query.id;
       delete req.query.id;
+    } else if (apiPath.startsWith('/')) {
+      // 保持路径不变
+    } else {
+      // 添加前导斜杠
+      apiPath = '/' + apiPath;
     }
     
-    // 构建完整API URL
-    const apiUrl = `${SUNO_API_URL}/${apiPath}`;
+    // 构建完整API URL - 确保URL格式正确
+    const baseUrl = SUNO_API_URL.endsWith('/') ? SUNO_API_URL.slice(0, -1) : SUNO_API_URL;
+    const apiUrl = `${baseUrl}${apiPath}`;
     console.log(`代理请求到: ${apiUrl}`);
 
     // 设置请求配置
@@ -68,14 +74,16 @@ module.exports = async (req, res) => {
       url: apiUrl,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUNO_API_KEY}`
+        'Authorization': `Bearer ${SUNO_API_KEY}`,
+        'Accept': 'application/json',
+        'Origin': 'https://ai-music-creator.vercel.app'
       }
     };
 
     // 如果是POST请求，附加请求体
     if (req.method === 'POST' && req.body) {
       // 处理generate请求的数据转换
-      if (apiPath === 'open/suno/music/generate') {
+      if (apiPath === '/open/suno/music/generate') {
         // 处理旧的API格式转换为新的格式
         if (req.body.prompt || req.body.is_instrumental !== undefined) {
           // 判断需要使用哪种模式
@@ -143,6 +151,10 @@ module.exports = async (req, res) => {
       .json(response.data);
   } catch (error) {
     console.error('API请求失败:', error.message);
+    if (error.response) {
+      console.error('API响应状态码:', error.response.status);
+      console.error('API响应数据:', error.response.data);
+    }
     
     // 返回错误响应
     const statusCode = error.response?.status || 500;
@@ -155,7 +167,7 @@ module.exports = async (req, res) => {
       .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
       .json({
         error: errorData,
-        message: '音乐API请求失败'
+        message: '音乐API请求失败: ' + error.message
       });
   }
 }; 
