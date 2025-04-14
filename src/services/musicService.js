@@ -168,13 +168,11 @@ class MusicService {
       
       console.log(`Checking music generation status, trackId: ${trackId}`);
       
-      // Build request data - Using POST body method
-      const requestData = { 
-        taskBatchId: trackId
-      };
+      // Use query parameters for GET request
+      const params = { taskBatchId: trackId };
       
-      // Send API request - Using POST method instead of GET
-      const response = await callApi('post', 'status', requestData);
+      // Send API request with GET method
+      const response = await callApi('get', 'status', null, params);
       
       console.log('Status query response:', response);
       

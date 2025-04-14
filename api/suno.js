@@ -41,12 +41,22 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
       throw { status: 500, message: 'API令牌未设置，请联系管理员' };
     }
     
-    // 合并请求数据和参数到一个对象中 - 使用POST body形式
+    // 合并请求数据和参数到一个对象中
     let requestData = { ...data } || {};
+    let queryParams = {};
     
-    // 将查询参数也添加到请求体中
-    if (Object.keys(params).length > 0) {
-      requestData = { ...requestData, ...params };
+    // 使用正确的HTTP方法 - 对于getState使用GET方法
+    const httpMethod = (endpoint === 'getState') ? 'get' : method;
+    
+    // 如果是GET请求，将数据放入查询参数
+    if (httpMethod.toLowerCase() === 'get') {
+      queryParams = { ...requestData, ...params };
+      requestData = null; // GET请求不需要请求体
+    } else {
+      // 将查询参数也添加到请求体中
+      if (Object.keys(params).length > 0) {
+        requestData = { ...requestData, ...params };
+      }
     }
     
     // 特别处理生成音乐的情况
@@ -61,19 +71,29 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
       if (requestData.myVersion) delete requestData.myVersion;
     }
     
-    console.log('最终请求数据:', JSON.stringify(requestData, null, 2));
+    console.log('最终请求数据:', requestData ? JSON.stringify(requestData, null, 2) : '无 (GET请求)');
+    
+    // 构建URL查询字符串 - 对于GET请求
+    let fullUrl = url;
+    if (httpMethod.toLowerCase() === 'get' && Object.keys(queryParams).length > 0) {
+      const urlParams = new URLSearchParams();
+      for (const [key, value] of Object.entries(queryParams)) {
+        urlParams.append(key, value);
+      }
+      fullUrl = `${url}?${urlParams.toString()}`;
+    }
     
     // 准备请求配置 - 使用X-Token和X-UserId作为认证头
     const requestConfig = {
-      method: 'post',
-      url: url,
+      method: httpMethod,
+      url: fullUrl,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'X-Token': apiToken,
         'X-UserId': userId
       },
-      data: requestData,
+      ...(requestData ? { data: requestData } : {}),
       timeout: 30000
     };
     
@@ -86,7 +106,7 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
         'X-Token': apiToken ? '已设置' : '未设置',
         'X-UserId': userId || '未设置'
       },
-      data: requestConfig.data
+      ...(requestData ? { data: '已设置' } : { data: '无 (GET请求)' })
     }, null, 2));
     
     // 发送API请求
@@ -232,7 +252,7 @@ export default async function handler(req, res) {
         const requestData = { taskBatchId };
         
         const result = await callSunoApi(
-          'post',
+          'get',  // 使用GET方法调用getState接口
           'getState', 
           requestData,
           {},
