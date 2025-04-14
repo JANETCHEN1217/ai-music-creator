@@ -201,6 +201,26 @@ const Create = () => {
         console.log('Task status:', status.taskStatus);
         console.log('Items array:', status.items);
         
+        // 增加详细的响应内容检查
+        if (status.rawResponse) {
+          console.log('===== 原始响应数据详情 =====');
+          console.log('原始响应对象结构:', Object.keys(status.rawResponse));
+          console.log('完整响应:', JSON.stringify(status.rawResponse, null, 2));
+          
+          const items = status.items || [];
+          if (items.length > 0) {
+            console.log('第一个音乐项详情:');
+            const item = items[0];
+            console.log('- 项目字段:', Object.keys(item));
+            console.log('- 音频URL存在?', Boolean(item.url || item.fileUrl || item.mp3Url));
+            console.log('- 具体URL:', item.url || item.fileUrl || item.mp3Url);
+            console.log('- 封面图片存在?', Boolean(item.imageUrl || item.coverUrl || item.coverImageUrl));
+            console.log('- 歌词存在?', Boolean(item.lyrics));
+          } else {
+            console.log('响应中没有音乐项目');
+          }
+        }
+        
         // 使用正确的状态名称 "success" 而不是 "completed"
         if (status.taskStatus === 'success' || status.taskStatus === 'complete') {
           // Generation completed successfully
