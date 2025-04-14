@@ -182,10 +182,16 @@ class MusicService {
         throw new Error('Incorrect status data format returned by server');
       }
       
+      // 打印详细的响应数据结构，帮助排查问题
+      console.log('Status data structure:', JSON.stringify(response.data, null, 2));
+      
+      // 确保返回包含必要的字段，并尝试标准化响应格式
       return {
         taskBatchId: trackId,
-        taskStatus: response.data?.taskStatus || "processing",
-        items: response.data?.items || []
+        taskStatus: response.data?.taskStatus || response.data?.status || "processing",
+        items: response.data?.items || [],
+        // 添加原始响应以便调试
+        rawResponse: response.data
       };
     } catch (error) {
       console.error('Status check failed:', error.message);

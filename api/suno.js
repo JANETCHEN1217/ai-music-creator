@@ -262,7 +262,31 @@ export default async function handler(req, res) {
         
         console.log('状态查询响应:', JSON.stringify(result, null, 2));
         
-        return success(result.data);
+        // 检查响应结构是否正确
+        if (!result.data) {
+          console.error('API返回的状态数据结构不完整:', result);
+          return error(500, '服务器返回的状态数据不完整');
+        }
+        
+        // 打印更详细的响应内容，帮助排查
+        console.log('状态数据详情:');
+        console.log('- taskStatus:', result.data.taskStatus);
+        console.log('- items:', JSON.stringify(result.data.items, null, 2));
+        
+        // 标准化响应，确保前端可以正确解析
+        const responseData = {
+          taskStatus: result.data.taskStatus || result.data.status || 'processing',
+          items: (result.data.items || []).map(item => ({
+            ...item,
+            // 确保有正确的URL字段格式
+            url: item.url || item.fileUrl || item.mp3Url,
+            imageUrl: item.imageUrl || item.coverUrl || item.coverImageUrl
+          }))
+        };
+        
+        console.log('标准化后的响应:', JSON.stringify(responseData, null, 2));
+        
+        return success(responseData);
       } catch (err) {
         console.error('查询状态失败:', err);
         return error(err.status || 500, `状态查询失败: ${err.message}`);

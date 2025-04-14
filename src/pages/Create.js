@@ -197,6 +197,11 @@ const Create = () => {
         const status = await MusicService.checkGenerationStatus(trackId);
         console.log('Status response:', status);
         
+        // 更详细的日志输出，帮助排查问题
+        console.log('Task status:', status.taskStatus);
+        console.log('Items array:', status.items);
+        
+        // 使用正确的状态名称 "success" 而不是 "completed"
         if (status.taskStatus === 'success' || status.taskStatus === 'complete') {
           // Generation completed successfully
           clearInterval(pollingInterval.current);
@@ -211,14 +216,19 @@ const Create = () => {
           // Process the items array to get audio URLs, cover image, etc.
           if (status.items && status.items.length > 0) {
             const item = status.items[0]; // Get the first item
+            console.log('Processing item:', item);
             
             trackData = {
               ...trackData,
-              fileUrl: item.url || '',
-              coverImage: item.imageUrl || `https://source.unsplash.com/random/300x300?music&${trackId}`,
+              fileUrl: item.url || item.fileUrl || '',
+              coverImage: item.imageUrl || item.coverUrl || `https://source.unsplash.com/random/300x300?music&${trackId}`,
               lyrics: item.lyrics || '',
               duration: item.duration || 30
             };
+            
+            console.log('Updated track data:', trackData);
+          } else {
+            console.warn('No items found in the response');
           }
           
           // Update the generated tracks list
@@ -228,15 +238,23 @@ const Create = () => {
             
             if (index !== -1) {
               updated[index] = { ...updated[index], ...trackData };
+              console.log('Updated track in list:', updated[index]);
+            } else {
+              console.warn('Track not found in list');
             }
             
             return updated;
           });
           
-          // Automatically play the newly generated track
-          const updatedTrack = { ...trackData };
-          setCurrentTrack(updatedTrack);
-          playTrack(updatedTrack);
+          // Automatically play the newly generated track if we have a URL
+          if (trackData.fileUrl) {
+            const updatedTrack = { ...trackData };
+            setCurrentTrack(updatedTrack);
+            playTrack(updatedTrack);
+          } else {
+            console.error('Track completed but no file URL available');
+            setError('Song generated but audio URL is missing');
+          }
         } 
         else if (status.taskStatus === 'failed') {
           // Generation failed
