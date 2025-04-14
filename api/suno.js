@@ -18,8 +18,8 @@ console.log("API环境配置:", {
 // API请求方法 - 统一处理API调用
 const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null, customUserId = null) => {
   try {
-    // 构建完整URL - 确保使用正确的API路径格式
-    const url = `${SUNO_API_URL}/_open/suno/music/${endpoint}`;
+    // 构建完整URL - 使用API管理员建议的路径
+    const url = `${SUNO_API_URL}/api/${endpoint}`;
     
     // 使用自定义令牌或环境变量中的令牌
     const apiToken = customToken || SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
@@ -41,51 +41,48 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
       throw { status: 500, message: 'API令牌未设置，请联系管理员' };
     }
     
-    // 格式化请求数据
-    let formattedData = data;
-    if (data && endpoint === 'generate') {
-      // 确保数据格式正确
-      formattedData = {
-        ...data,
-        // 确保字段名称正确
-        mvVersion: data.mvVersion || data.myVersion || "chirp-v4",
-        // 确保布尔值正确转换为字符串
-        makeInstrumental: data.makeInstrumental === true ? "true" : "false"
-      };
-      // 移除可能导致问题的字段
-      if (formattedData.myVersion) delete formattedData.myVersion;
-      
-      console.log('格式化后的请求数据:', JSON.stringify(formattedData, null, 2));
+    // 合并请求数据和参数到一个对象中 - 使用POST body形式
+    let requestData = { ...data };
+    
+    // 将查询参数也添加到请求体中
+    if (Object.keys(params).length > 0) {
+      requestData = { ...requestData, ...params };
     }
     
-    // 格式化参数
-    const queryParams = { ...params };
+    // 添加认证信息到请求体
+    requestData.token = apiToken;
+    requestData.userId = userId;
     
-    // 准备请求配置
+    // 特别处理生成音乐的情况
+    if (endpoint === 'generate') {
+      // 确保字段名称正确
+      requestData.mvVersion = requestData.mvVersion || requestData.myVersion || "chirp-v4";
+      // 确保布尔值正确转换为字符串
+      if (typeof requestData.makeInstrumental === 'boolean') {
+        requestData.makeInstrumental = requestData.makeInstrumental ? "true" : "false";
+      }
+      // 移除可能导致问题的字段
+      if (requestData.myVersion) delete requestData.myVersion;
+    }
+    
+    console.log('最终请求数据:', JSON.stringify(requestData, null, 2));
+    
+    // 准备请求配置 - 统一使用POST方法
     const requestConfig = {
-      method: method.toLowerCase(),
+      method: 'post', // 始终使用POST方式
       url: url,
       headers: {
-        'X-Token': apiToken,
-        'X-UserId': userId,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      params: queryParams,
-      data: formattedData,
+      data: requestData,
       timeout: 30000 // 30秒超时
     };
     
     console.log('最终请求配置:', JSON.stringify({
       method: requestConfig.method,
       url: requestConfig.url,
-      headers: {
-        'X-Token': apiToken ? '已设置' : '未设置',
-        'X-UserId': userId || '未设置',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      params: requestConfig.params,
+      headers: requestConfig.headers,
       data: requestConfig.data
     }, null, 2));
     
@@ -192,16 +189,12 @@ export default async function handler(req, res) {
     
     // 显示将使用的API凭据（隐藏完整令牌）
     console.log('使用的API凭据:', {
-      'X-Token': apiToken ? `${apiToken.substring(0, 5)}...${apiToken.substring(apiToken.length - 5)}` : '未设置',
-      'X-UserId': userId || '未设置'
+      'token': apiToken ? `${apiToken.substring(0, 5)}...${apiToken.substring(apiToken.length - 5)}` : '未设置',
+      'userId': userId || '未设置'
     });
     
     // 生成音乐
     if (path === 'generate') {
-      if (req.method !== 'POST') {
-        return error(405, '不支持的请求方法');
-      }
-      
       try {
         console.log('处理音乐生成请求');
         const result = await callSunoApi(
@@ -222,10 +215,6 @@ export default async function handler(req, res) {
     
     // 查询状态
     else if (path === 'status') {
-      if (req.method !== 'GET') {
-        return error(405, '不支持的请求方法');
-      }
-      
       const { taskBatchId } = req.query;
       if (!taskBatchId) {
         return error(400, '缺少必要参数: taskBatchId');
@@ -234,7 +223,7 @@ export default async function handler(req, res) {
       try {
         console.log('处理状态查询请求');
         const result = await callSunoApi(
-          'get', 
+          'post', // 改为POST方法
           'getState', 
           null, 
           { taskBatchId },
@@ -251,10 +240,6 @@ export default async function handler(req, res) {
     
     // 生成歌词
     else if (path === 'lyrics') {
-      if (req.method !== 'POST') {
-        return error(405, '不支持的请求方法');
-      }
-      
       try {
         console.log('处理歌词生成请求');
         const result = await callSunoApi(
@@ -275,10 +260,6 @@ export default async function handler(req, res) {
     
     // 伴奏分离
     else if (path === 'stems') {
-      if (req.method !== 'GET') {
-        return error(405, '不支持的请求方法');
-      }
-      
       const { clipId } = req.query;
       if (!clipId) {
         return error(400, '缺少必要参数: clipId');
@@ -287,7 +268,7 @@ export default async function handler(req, res) {
       try {
         console.log('处理伴奏分离请求');
         const result = await callSunoApi(
-          'get', 
+          'post', // 改为POST方法
           'stems', 
           null, 
           { clipId },
@@ -304,10 +285,6 @@ export default async function handler(req, res) {
     
     // WAV下载
     else if (path === 'wav') {
-      if (req.method !== 'GET') {
-        return error(405, '不支持的请求方法');
-      }
-      
       const { clipId } = req.query;
       if (!clipId) {
         return error(400, '缺少必要参数: clipId');
@@ -316,7 +293,7 @@ export default async function handler(req, res) {
       try {
         console.log('处理WAV下载请求');
         const result = await callSunoApi(
-          'get', 
+          'post', // 改为POST方法
           'wav', 
           null, 
           { clipId },
@@ -333,16 +310,12 @@ export default async function handler(req, res) {
     
     // 历史记录
     else if (path === 'my') {
-      if (req.method !== 'GET') {
-        return error(405, '不支持的请求方法');
-      }
-      
       const { pageNum, pageSize } = req.query;
       
       try {
         console.log('处理历史记录请求');
         const result = await callSunoApi(
-          'get', 
+          'post', // 改为POST方法
           'my', 
           null, 
           { pageNum: pageNum || 1, pageSize: pageSize || 10 },
