@@ -2,8 +2,8 @@
 const axios = require('./axios');
 
 // Suno API配置 - 明确使用环境变量
-const SUNO_API_URL = process.env.SUNO_API_URL || process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';
-const SUNO_API_TOKEN = process.env.SUNO_API_TOKEN || process.env.REACT_APP_SUNO_API_TOKEN || '';
+const SUNO_API_URL = process.env.SUNO_API_URL || process.env.REACT_APP_SUNO_API_URL || 'https://dzwlai.com/apiuser';
+const SUNO_API_TOKEN = process.env.SUNO_API_TOKEN || process.env.REACT_APP_SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
 const SUNO_API_USERID = process.env.SUNO_API_USERID || process.env.REACT_APP_SUNO_API_USERID || '13411892959';
 
 // 显示环境配置信息
@@ -19,10 +19,7 @@ console.log("API环境配置:", {
 const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null, customUserId = null) => {
   try {
     // 构建完整URL - 使用正确的API端点
-    // 注意：根据错误日志，正确的URL可能是https://suno4.cn/api/v1/endpoint或/api/suno/endpoint
-    const url = endpoint === 'generate' 
-      ? `https://api.suno4.cn/v1/generate` 
-      : `https://api.suno4.cn/v1/${endpoint}`;
+    const url = `${SUNO_API_URL}/_open/suno/music/${endpoint}`;
     
     // 使用自定义令牌或环境变量中的令牌
     const apiToken = customToken || SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
@@ -52,10 +49,6 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
       requestData = { ...requestData, ...params };
     }
     
-    // 添加认证信息到请求体
-    requestData.token = apiToken;
-    requestData.userId = userId;
-    
     // 特别处理生成音乐的情况
     if (endpoint === 'generate') {
       // 确保字段名称正确
@@ -70,7 +63,7 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
     
     console.log('最终请求数据:', JSON.stringify(requestData, null, 2));
     
-    // 尝试另一种请求头格式：添加X-Token和X-UserId头，同时也在请求体中包含token和userId
+    // 准备请求配置 - 使用X-Token和X-UserId作为认证头
     const requestConfig = {
       method: 'post',
       url: url,
@@ -121,12 +114,12 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
     // 更详细的错误处理
     if (error.code === 'ECONNREFUSED') {
       console.error('无法连接到API服务器');
-      throw { status: 500, message: `无法连接到API服务器: ${SUNO_API_URL}` };
+      throw { status: 500, message: `无法连接到API服务器: ${url}` };
     }
     
     if (error.code === 'ENOTFOUND') {
       console.error('找不到API服务器域名');
-      throw { status: 500, message: `无法解析API服务器域名: ${SUNO_API_URL}` };
+      throw { status: 500, message: `无法解析API服务器域名: ${url}` };
     }
     
     if (error.code === 'ETIMEDOUT') {

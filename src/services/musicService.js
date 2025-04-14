@@ -8,7 +8,7 @@ const currentDomain = isProduction ? window.location.origin : 'http://localhost:
 const API_URL = `${currentDomain}/api/suno`;
 
 // API配置 - 从环境变量获取Suno API凭据
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn'; 
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://dzwlai.com/apiuser'; 
 const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
 const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
 
@@ -25,7 +25,7 @@ const callApi = async (method, path, data = null, params = {}) => {
       url += `&${key}=${encodeURIComponent(params[key])}`;
     });
   } else {
-    // 本地开发环境直接调用Suno API
+    // 本地开发环境直接调用Suno API - 使用正确的路径格式
     url = `${SUNO_API_URL}/_open/suno/music/${path}`;
     if (Object.keys(params).length > 0) {
       const queryParams = new URLSearchParams(params);
