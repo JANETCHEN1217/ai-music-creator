@@ -4,53 +4,16 @@ import axios from 'axios';
 const isProduction = process.env.NODE_ENV === 'production';
 const currentDomain = isProduction ? window.location.origin : 'http://localhost:3000';
 
-// API配置
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';
+// 简单直接的代理URL
+const PROXY_URL = `${currentDomain}/api/suno`; 
+
+// API配置 - 保留以便在后端使用
+const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn'; 
 const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
 const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
 
-// 使用CORS代理进行直接API调用 (避开405错误)
-const CORS_PROXY_URL = 'https://corsproxy.io/?';
-
-// API帮助函数 - 直接调用API，避开代理服务
-const callApi = async (method, endpoint, data = null) => {
-  // 构建完整URL (使用CORS代理)
-  const url = `${CORS_PROXY_URL}${SUNO_API_URL}/${endpoint}`;
-  
-  // 打印请求信息
-  console.log(`【API请求】${method.toUpperCase()} ${url}`);
-  if (data) console.log('【请求数据】', JSON.stringify(data));
-  
-  // 构建请求配置
-  const config = {
-    method,
-    url,
-    headers: {
-      'X-Token': SUNO_API_TOKEN,
-      'X-UserId': SUNO_API_USERID,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    ...(data ? { data } : {})
-  };
-  
-  try {
-    // 发送请求
-    const response = await axios(config);
-    console.log('【API响应】', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('【API错误】', error.message);
-    if (error.response) {
-      console.error('【错误状态】', error.response.status);
-      console.error('【错误数据】', error.response.data);
-    }
-    throw error;
-  }
-};
-
 class MusicService {
-  // 生成音乐 - 直接调用API实现
+  // 生成音乐 - 极致简化版本
   static async generateTrack({
     mode,
     description,
@@ -68,37 +31,46 @@ class MusicService {
       if (mode === 'simple') {
         // 灵感模式
         requestData = {
-          "mvVersion": "chirp-v4",
-          "inputType": "10",
-          "makeInstrumental": isInstrumental === true ? "true" : "false", 
-          "gptDescriptionPrompt": description || "一首愉快的阳光歌曲",
-          "callbackUrl": ""
+          mvVersion: "chirp-v4",
+          inputType: "10",
+          makeInstrumental: isInstrumental === true ? "true" : "false", 
+          gptDescriptionPrompt: description || "一首愉快的阳光歌曲",
+          callbackUrl: ""
         };
       } else {
         // 自定义模式
         requestData = {
-          "mvVersion": "chirp-v4",
-          "inputType": "20",
-          "makeInstrumental": isInstrumental === true ? "true" : "false",
-          "prompt": lyrics || "",
-          "tags": Array.isArray(style) ? style.join(',') : style,
-          "title": (Array.isArray(style) ? style.join(' ') : style) || description || "我的歌曲",
-          "continueClipId": "",
-          "continueAt": "",
-          "callbackUrl": ""
+          mvVersion: "chirp-v4",
+          inputType: "20",
+          makeInstrumental: isInstrumental === true ? "true" : "false",
+          prompt: lyrics || "",
+          tags: Array.isArray(style) ? style.join(',') : style,
+          title: (Array.isArray(style) ? style.join(' ') : style) || description || "我的歌曲",
+          continueClipId: "",
+          continueAt: "",
+          callbackUrl: ""
         };
       }
       
-      // 直接调用API
-      const response = await callApi('post', 'open/suno/music/generate', requestData);
+      console.log('请求数据:', requestData);
       
-      if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "创建音乐失败");
+      // 发送生成音乐请求
+      const response = await axios.post(`${PROXY_URL}/generate`, requestData);
+      
+      console.log('音乐生成响应:', response.data);
+      
+      // 处理响应
+      if (!response.data || response.data.error || response.data.code !== 200) {
+        throw new Error(
+          response.data?.error || 
+          response.data?.msg || 
+          "创建音乐失败"
+        );
       }
       
       return {
-        trackId: response.data.taskBatchId || "",
-        items: response.data.items || []
+        trackId: response.data.data?.taskBatchId || "",
+        items: response.data.data?.items || []
       };
     } catch (error) {
       console.error('生成音乐失败:', error);
@@ -106,41 +78,53 @@ class MusicService {
     }
   }
 
-  // 检查音乐生成状态
+  // 检查音乐生成状态 - 极致简化版本
   static async checkGenerationStatus(trackId) {
     try {
-      const response = await callApi('get', `open/suno/music/getState?taskBatchId=${trackId}`);
+      if (!trackId) {
+        throw new Error('任务ID不能为空');
+      }
       
-      if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "检查音乐状态失败");
+      const response = await axios.get(`${PROXY_URL}/status?taskBatchId=${trackId}`);
+      
+      if (!response.data || response.data.error || response.data.code !== 200) {
+        throw new Error(
+          response.data?.error || 
+          response.data?.msg || 
+          "检查音乐状态失败"
+        );
       }
       
       return {
         taskBatchId: trackId,
-        taskStatus: response.data.taskStatus || "processing",
-        items: response.data.items || []
+        taskStatus: response.data.data?.taskStatus || "processing",
+        items: response.data.data?.items || []
       };
     } catch (error) {
-      console.error('检查状态失败:', error.message);
+      console.error('检查状态失败:', error);
       throw new Error('无法检查音乐生成状态，请稍后再试。');
     }
   }
 
-  // 生成歌词
+  // 生成歌词 - 极致简化版本
   static async generateLyrics(prompt) {
     try {
-      const response = await callApi('post', 'open/suno/music/generateLyrics', { prompt });
+      const response = await axios.post(`${PROXY_URL}/lyrics`, { prompt });
       
-      if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "生成歌词失败");
+      if (!response.data || response.data.error || response.data.code !== 200) {
+        throw new Error(
+          response.data?.error || 
+          response.data?.msg || 
+          "生成歌词失败"
+        );
       }
       
       return {
-        lyric: response.data.lyric || "",
-        title: response.data.title || ""
+        lyric: response.data.data?.lyric || "",
+        title: response.data.data?.title || ""
       };
     } catch (error) {
-      console.error('生成歌词失败:', error.message);
+      console.error('生成歌词失败:', error);
       throw new Error('无法生成歌词，请稍后再试。');
     }
   }
@@ -148,7 +132,7 @@ class MusicService {
   // 伴奏分离
   static async separateVocalAndInstrumental(clipId) {
     try {
-      const response = await callApi('get', `open/suno/music/stems?clipId=${clipId}`);
+      const response = await axios.get(`${PROXY_URL}/stems?clipId=${clipId}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "伴奏分离失败");
@@ -167,7 +151,7 @@ class MusicService {
   // 获取WAV文件
   static async getWavFile(clipId) {
     try {
-      const response = await callApi('get', `open/suno/music/wav?clipId=${clipId}`);
+      const response = await axios.get(`${PROXY_URL}/wav?clipId=${clipId}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "获取WAV文件失败");
@@ -186,7 +170,7 @@ class MusicService {
   // 获取历史记录
   static async getMusicHistory(pageNum = 1, pageSize = 10) {
     try {
-      const response = await callApi('get', `open/suno/music/my?pageNum=${pageNum}&pageSize=${pageSize}`);
+      const response = await axios.get(`${PROXY_URL}/my?pageNum=${pageNum}&pageSize=${pageSize}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "获取历史记录失败");
@@ -202,16 +186,14 @@ class MusicService {
     }
   }
 
-  // 获取标签
+  // 获取标签 - 使用本地数据而非API调用
   static async getTags() {
-    const defaultTags = {
+    return {
       genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
       moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
       voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
       tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
     };
-    
-    return defaultTags;
   }
 }
 
