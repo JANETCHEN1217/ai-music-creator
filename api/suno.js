@@ -16,19 +16,20 @@ console.log("API环境配置:", {
 });
 
 // API请求方法 - 统一处理API调用
-const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null) => {
+const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null, customUserId = null) => {
   try {
     // 构建完整URL
     const url = `${SUNO_API_URL}/${endpoint}`;
     
     // 使用自定义令牌或环境变量中的令牌
-    const apiToken = customToken || SUNO_API_TOKEN;
+    const apiToken = customToken || SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
+    const userId = customUserId || SUNO_API_USERID || '13411892959';
     
     // 打印详细的请求信息
     console.log(`调用Suno API: ${method.toUpperCase()} ${url}`);
     console.log('API凭证:', {
       'X-Token': apiToken ? '已设置' : '未设置',
-      'X-UserId': SUNO_API_USERID
+      'X-UserId': userId || '未设置'
     });
     
     if (data) console.log('请求数据:', JSON.stringify(data, null, 2));
@@ -66,7 +67,7 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
       url: url,
       headers: {
         'X-Token': apiToken,
-        'X-UserId': SUNO_API_USERID,
+        'X-UserId': userId,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
@@ -80,7 +81,7 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
       url: requestConfig.url,
       headers: {
         'X-Token': apiToken ? '已设置' : '未设置',
-        'X-UserId': SUNO_API_USERID,
+        'X-UserId': userId || '未设置',
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
@@ -138,7 +139,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-API-TOKEN');
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-API-TOKEN, X-Token, X-UserId');
 
   // 处理预检请求
   if (req.method === 'OPTIONS') {
@@ -165,20 +166,35 @@ export default async function handler(req, res) {
     const { path } = req.query;
     console.log(`收到${req.method}请求, 路径: ${path}`, JSON.stringify(req.body, null, 2));
     
-    // 从请求头中获取自定义令牌
-    const customToken = req.headers['x-api-token'];
+    // 从多个可能的来源获取令牌
+    const customToken = req.headers['x-api-token'] || req.headers['x-token'] || req.body?.token;
+    
+    // 如果请求头中有用户ID，也使用它
+    const customUserId = req.headers['x-userid'] || req.body?.userId;
+    
     if (customToken) {
       console.log('使用客户端提供的API令牌');
     }
     
-    // 使用环境变量中的令牌或客户端提供的令牌
-    const apiToken = customToken || SUNO_API_TOKEN;
+    if (customUserId) {
+      console.log('使用客户端提供的用户ID');
+    }
     
-    // 检查API配置
+    // 使用环境变量中的令牌、客户端提供的令牌，或者硬编码的备用令牌
+    const apiToken = customToken || SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
+    const userId = customUserId || SUNO_API_USERID || '13411892959';
+    
+    // 检查API配置 - 虽然有备用令牌，但还是进行检查
     if (!apiToken) {
       console.error('API令牌未设置');
       return error(500, '服务配置不完整: API令牌未设置，请联系管理员');
     }
+    
+    // 显示将使用的API凭据（隐藏完整令牌）
+    console.log('使用的API凭据:', {
+      'X-Token': apiToken ? `${apiToken.substring(0, 5)}...${apiToken.substring(apiToken.length - 5)}` : '未设置',
+      'X-UserId': userId || '未设置'
+    });
     
     // 生成音乐
     if (path === 'generate') {
@@ -193,7 +209,8 @@ export default async function handler(req, res) {
           'open/suno/music/generate', 
           req.body,
           {},
-          apiToken
+          apiToken,
+          userId
         );
         
         return success(result.data);
@@ -221,7 +238,8 @@ export default async function handler(req, res) {
           'open/suno/music/getState', 
           null, 
           { taskBatchId },
-          apiToken
+          apiToken,
+          userId
         );
         
         return success(result.data);
@@ -244,7 +262,8 @@ export default async function handler(req, res) {
           'open/suno/music/generateLyrics', 
           req.body,
           {},
-          apiToken
+          apiToken,
+          userId
         );
         
         return success(result.data);
@@ -272,7 +291,8 @@ export default async function handler(req, res) {
           'open/suno/music/stems', 
           null, 
           { clipId },
-          apiToken
+          apiToken,
+          userId
         );
         
         return success(result.data);
@@ -300,7 +320,8 @@ export default async function handler(req, res) {
           'open/suno/music/wav', 
           null, 
           { clipId },
-          apiToken
+          apiToken,
+          userId
         );
         
         return success(result.data);
@@ -325,7 +346,8 @@ export default async function handler(req, res) {
           'open/suno/music/my', 
           null, 
           { pageNum: pageNum || 1, pageSize: pageSize || 10 },
-          apiToken
+          apiToken,
+          userId
         );
         
         return success(result.data);
