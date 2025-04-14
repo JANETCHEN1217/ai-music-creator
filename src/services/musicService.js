@@ -169,8 +169,26 @@ class MusicService {
         throw new Error('任务ID不能为空');
       }
       
-      // 发送API请求
-      const response = await callApi('get', 'status', null, { taskBatchId: trackId });
+      console.log(`开始查询音乐生成状态，trackId: ${trackId}`);
+      
+      // 构建请求数据 - 使用POST body方式
+      const requestData = { 
+        taskBatchId: trackId,
+        // 添加认证信息
+        token: localStorage.getItem('sunoApiToken') || '',
+        userId: '13411892959'
+      };
+      
+      // 发送API请求 - 使用POST方法而不是GET
+      const response = await callApi('post', 'status', requestData);
+      
+      console.log('状态查询响应:', response);
+      
+      // 如果没有正确的响应结构，给出更清晰的错误
+      if (!response.data) {
+        console.error('状态查询响应格式错误:', response);
+        throw new Error('服务器返回的状态数据格式错误');
+      }
       
       return {
         taskBatchId: trackId,

@@ -218,21 +218,29 @@ export default async function handler(req, res) {
     
     // 查询状态
     else if (path === 'status') {
-      const { taskBatchId } = req.query;
+      // 从查询参数或请求体中获取taskBatchId
+      const taskBatchId = req.query.taskBatchId || req.body?.taskBatchId;
+      
       if (!taskBatchId) {
         return error(400, '缺少必要参数: taskBatchId');
       }
       
       try {
-        console.log('处理状态查询请求');
+        console.log('处理状态查询请求，taskBatchId:', taskBatchId);
+        
+        // 构建带有taskBatchId的请求数据
+        const requestData = { taskBatchId };
+        
         const result = await callSunoApi(
-          'post', // 改为POST方法
+          'post',
           'getState', 
-          null, 
-          { taskBatchId },
+          requestData,
+          {},
           apiToken,
           userId
         );
+        
+        console.log('状态查询响应:', JSON.stringify(result, null, 2));
         
         return success(result.data);
       } catch (err) {
