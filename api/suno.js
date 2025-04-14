@@ -1,5 +1,5 @@
 // 直接面向Suno API的Vercel代理服务
-import axios from 'axios';
+const axios = require('axios');
 
 // Suno API配置 - 明确使用环境变量
 const SUNO_API_URL = process.env.SUNO_API_URL || process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';

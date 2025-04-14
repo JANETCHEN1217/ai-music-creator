@@ -16,6 +16,8 @@
     "axios": "^1.4.0",
     "howler": "^2.2.3"
   },
+  "devDependencies": {
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
