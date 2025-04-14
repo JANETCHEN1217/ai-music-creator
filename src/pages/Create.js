@@ -212,9 +212,9 @@ const Create = () => {
             console.log('第一个音乐项详情:');
             const item = items[0];
             console.log('- 项目字段:', Object.keys(item));
-            console.log('- 音频URL存在?', Boolean(item.url || item.fileUrl || item.mp3Url));
-            console.log('- 具体URL:', item.url || item.fileUrl || item.mp3Url);
-            console.log('- 封面图片存在?', Boolean(item.imageUrl || item.coverUrl || item.coverImageUrl));
+            console.log('- 音频URL存在?', Boolean(item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl));
+            console.log('- 具体URL:', item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl);
+            console.log('- 封面图片存在?', Boolean(item.imageUrl || item.coverUrl || item.coverImageUrl || item.clid2ImageUrl));
             console.log('- 歌词存在?', Boolean(item.lyrics));
           } else {
             console.log('响应中没有音乐项目');
@@ -244,14 +244,17 @@ const Create = () => {
             const item = status.items[0]; // 获取第一首歌
             console.log('Processing music item:', item);
             
+            // 提取重要字段
+            const clipId = item.clipId || '';
             // 尝试从多个可能的字段中获取URL
-            const fileUrl = item.url || item.fileUrl || item.mp3Url || '';
+            const fileUrl = item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl || '';
             // 尝试从多个可能的字段中获取封面图片
-            const coverImage = item.imageUrl || item.coverUrl || item.coverImageUrl || 
+            const coverImage = item.imageUrl || item.coverUrl || item.coverImageUrl || item.clid2ImageUrl || 
                               `https://source.unsplash.com/random/300x300?music&${trackId}`;
             
             trackData = {
               ...trackData,
+              clipId, // 保存clipId，用于构建备用URL
               fileUrl,
               coverImage,
               lyrics: item.lyrics || '没有歌词',
@@ -346,7 +349,12 @@ const Create = () => {
       // 尝试查找或构建URL
       let fallbackUrl = '';
       if (track.trackId) {
-        fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+        // 优先尝试使用clipId构建URL
+        if (track.clipId) {
+          fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.clipId}`;
+        } else {
+          fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+        }
         console.log('尝试使用备用URL:', fallbackUrl);
         
         // 使用备用URL更新track
@@ -356,7 +364,20 @@ const Create = () => {
       }
     }
     
-    console.log('Playing track:', track);
+    // 实时校正URL格式
+    if (track.fileUrl && track.fileUrl.indexOf('https://') === -1) {
+      if (track.fileUrl.startsWith('/')) {
+        // 相对URL转绝对URL
+        const baseUrl = 'https://dzwlai.com/apiuser';
+        track.fileUrl = `${baseUrl}${track.fileUrl}`;
+      } else {
+        // 其他异常情况
+        console.log('URL格式不正确，尝试替换:', track.fileUrl);
+        track.fileUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+      }
+    }
+    
+    console.log('Playing track with URL:', track.fileUrl);
     
     // Stop current playback if any
     if (sound.current) {

@@ -298,11 +298,11 @@ export default async function handler(req, res) {
               title: item.title || result.data.title || '生成的音乐',
               
               // 歌曲音频URL
-              url: item.url || item.fileUrl || item.mp3Url || 
+              url: item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl || 
                   (`https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${item.clipId || taskBatchId}`),
               
               // 封面图片URL
-              imageUrl: item.imageUrl || item.coverUrl || item.coverImageUrl || 
+              imageUrl: item.imageUrl || item.coverUrl || item.coverImageUrl || item.clid2ImageUrl || 
                        `https://source.unsplash.com/random/300x300?music&${taskBatchId}`,
               
               // 歌词 - 没有则使用默认歌词

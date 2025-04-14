@@ -194,8 +194,8 @@ class MusicService {
         items: Array.isArray(response.data.items) ? response.data.items.map(item => ({
           ...item,
           // 进一步确保每个字段都存在
-          url: item.url || item.fileUrl || '',
-          imageUrl: item.imageUrl || item.coverUrl || '',
+          url: item.url || item.fileUrl || item.clid2AudioUrl || '',
+          imageUrl: item.imageUrl || item.coverUrl || item.clid2ImageUrl || '',
           lyrics: item.lyrics || '',
           duration: item.duration || 30
         })) : [],
