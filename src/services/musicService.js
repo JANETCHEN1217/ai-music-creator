@@ -185,14 +185,26 @@ class MusicService {
       // 打印详细的响应数据结构，帮助排查问题
       console.log('Status data structure:', JSON.stringify(response.data, null, 2));
       
-      // 确保返回包含必要的字段，并尝试标准化响应格式
-      return {
+      // 统一化响应结构，确保客户端处理的一致性
+      const statusData = {
         taskBatchId: trackId,
-        taskStatus: response.data?.taskStatus || response.data?.status || "processing",
-        items: response.data?.items || [],
-        // 添加原始响应以便调试
+        // 优先使用taskStatus，然后是status字段
+        taskStatus: response.data.taskStatus || response.data.status || "processing",
+        // 确保items数组存在，且内部每个项都有必要的字段
+        items: Array.isArray(response.data.items) ? response.data.items.map(item => ({
+          ...item,
+          // 进一步确保每个字段都存在
+          url: item.url || item.fileUrl || '',
+          imageUrl: item.imageUrl || item.coverUrl || '',
+          lyrics: item.lyrics || '',
+          duration: item.duration || 30
+        })) : [],
+        // 保留原始响应
         rawResponse: response.data
       };
+      
+      console.log('Normalized status data:', statusData);
+      return statusData;
     } catch (error) {
       console.error('Status check failed:', error.message);
       throw new Error(`Unable to check music generation status: ${error.message}`);

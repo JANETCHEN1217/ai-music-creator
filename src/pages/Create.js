@@ -221,37 +221,59 @@ const Create = () => {
           }
         }
         
-        // 使用正确的状态名称 "success" 而不是 "completed"
-        if (status.taskStatus === 'success' || status.taskStatus === 'complete') {
-          // Generation completed successfully
+        // 使用多种可能的状态名称，确保能够正确识别完成状态
+        const isCompleted = status.taskStatus === 'success' || 
+                            status.taskStatus === 'complete' || 
+                            status.status === 'success' || 
+                            status.status === 'complete';
+                            
+        if (isCompleted) {
+          // 歌曲生成成功完成
+          console.log('音乐生成完成!');
           clearInterval(pollingInterval.current);
           
-          // Extract track data from the response
+          // 提取歌曲数据
           let trackData = {
             trackId: trackId,
-            title: songTitle || description || 'My Track',
+            title: songTitle || description || '我的歌曲',
             status: 'completed',
           };
           
-          // Process the items array to get audio URLs, cover image, etc.
+          // 处理items数组，获取音频URL、封面图片等
           if (status.items && status.items.length > 0) {
-            const item = status.items[0]; // Get the first item
-            console.log('Processing item:', item);
+            const item = status.items[0]; // 获取第一首歌
+            console.log('Processing music item:', item);
+            
+            // 尝试从多个可能的字段中获取URL
+            const fileUrl = item.url || item.fileUrl || item.mp3Url || '';
+            // 尝试从多个可能的字段中获取封面图片
+            const coverImage = item.imageUrl || item.coverUrl || item.coverImageUrl || 
+                              `https://source.unsplash.com/random/300x300?music&${trackId}`;
             
             trackData = {
               ...trackData,
-              fileUrl: item.url || item.fileUrl || '',
-              coverImage: item.imageUrl || item.coverUrl || `https://source.unsplash.com/random/300x300?music&${trackId}`,
-              lyrics: item.lyrics || '',
+              fileUrl,
+              coverImage,
+              lyrics: item.lyrics || '没有歌词',
               duration: item.duration || 30
             };
             
+            // 强制为fileUrl设置一个值，确保播放器可以工作
+            if (!trackData.fileUrl) {
+              console.log('生成的歌曲没有直接的URL，尝试使用API获取');
+              // 如果没有直接的URL，尝试构建一个URL
+              trackData.fileUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${item.clipId || trackId}`;
+            }
+            
             console.log('Updated track data:', trackData);
           } else {
-            console.warn('No items found in the response');
+            console.warn('响应中没有音乐项目，使用默认值');
+            // 即使没有items，也要确保有最低限度的数据可以显示
+            trackData.coverImage = `https://source.unsplash.com/random/300x300?music&${trackId}`;
+            trackData.fileUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${trackId}`;
           }
           
-          // Update the generated tracks list
+          // 更新生成的歌曲列表
           setGeneratedTracks(prev => {
             const updated = [...prev];
             const index = updated.findIndex(t => t.trackId === trackId);
@@ -260,28 +282,29 @@ const Create = () => {
               updated[index] = { ...updated[index], ...trackData };
               console.log('Updated track in list:', updated[index]);
             } else {
-              console.warn('Track not found in list');
+              console.warn('Track not found in list, adding new one');
+              updated.push(trackData);
             }
             
             return updated;
           });
           
-          // Automatically play the newly generated track if we have a URL
+          // 如果有URL，自动播放新生成的歌曲
           if (trackData.fileUrl) {
             const updatedTrack = { ...trackData };
             setCurrentTrack(updatedTrack);
             playTrack(updatedTrack);
           } else {
             console.error('Track completed but no file URL available');
-            setError('Song generated but audio URL is missing');
+            setError('歌曲生成成功，但没有可用的音频URL。请联系支持。');
           }
         } 
-        else if (status.taskStatus === 'failed') {
-          // Generation failed
+        else if (status.taskStatus === 'failed' || status.status === 'failed') {
+          // 生成失败
           clearInterval(pollingInterval.current);
-          setError('Music generation failed. Please try again.');
+          setError('音乐生成失败，请再试一次。');
           
-          // Update track status
+          // 更新歌曲状态
           setGeneratedTracks(prev => {
             const updated = [...prev];
             const index = updated.findIndex(t => t.trackId === trackId);
@@ -296,10 +319,10 @@ const Create = () => {
             return updated;
           });
         }
-        // For other statuses (processing, pending), continue polling
+        // 其他状态(processing, pending)继续轮询
       } catch (error) {
         console.error('Error polling status:', error);
-        // Don't clear the interval, try again next time
+        // 不清除轮询，下次再试
       }
     };
     
@@ -310,9 +333,27 @@ const Create = () => {
   
   // Playing a track
   const playTrack = (track) => {
-    if (!track || !track.fileUrl) {
-      console.error('Cannot play track: missing URL', track);
+    if (!track) {
+      console.error('Cannot play track: track is null or undefined');
+      setError('无法播放：未提供有效的歌曲');
       return;
+    }
+    
+    if (!track.fileUrl) {
+      console.error('Cannot play track: missing URL', track);
+      setError('无法播放：歌曲URL不存在');
+      
+      // 尝试查找或构建URL
+      let fallbackUrl = '';
+      if (track.trackId) {
+        fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+        console.log('尝试使用备用URL:', fallbackUrl);
+        
+        // 使用备用URL更新track
+        track = { ...track, fileUrl: fallbackUrl };
+      } else {
+        return; // 如果无法构建备用URL，则放弃播放
+      }
     }
     
     console.log('Playing track:', track);
@@ -327,43 +368,75 @@ const Create = () => {
     setCurrentTrack(track);
     setCurrentLyrics(track.lyrics || '');
     
-    // Create new Howler sound instance
-    sound.current = new Howl({
-      src: [track.fileUrl],
-      html5: true,
-      onplay: () => {
-        setIsPlaying(true);
-        // Start progress tracking
-        progressTimer.current = setInterval(() => {
-          setTrackProgress(sound.current.seek());
-        }, 1000);
-      },
-      onpause: () => {
-        setIsPlaying(false);
-        clearInterval(progressTimer.current);
-      },
-      onstop: () => {
-        setIsPlaying(false);
-        setTrackProgress(0);
-        clearInterval(progressTimer.current);
-      },
-      onend: () => {
-        setIsPlaying(false);
-        setTrackProgress(0);
-        clearInterval(progressTimer.current);
-      },
-      onloaderror: (id, err) => {
-        console.error('Error loading audio:', err);
-        setError('Could not load the audio file');
-      },
-      onplayerror: (id, err) => {
-        console.error('Error playing audio:', err);
-        setError('Could not play the audio file');
-      }
-    });
+    // 显示正在加载
+    setLoading(true);
     
-    // Start playback
-    sound.current.play();
+    try {
+      // Create new Howler sound instance
+      sound.current = new Howl({
+        src: [track.fileUrl],
+        html5: true,
+        onload: () => {
+          // 音频加载成功
+          setLoading(false);
+          console.log('音频加载成功，准备播放');
+        },
+        onplay: () => {
+          setIsPlaying(true);
+          setLoading(false);
+          // Start progress tracking
+          progressTimer.current = setInterval(() => {
+            setTrackProgress(sound.current.seek());
+          }, 1000);
+        },
+        onpause: () => {
+          setIsPlaying(false);
+          clearInterval(progressTimer.current);
+        },
+        onstop: () => {
+          setIsPlaying(false);
+          setTrackProgress(0);
+          clearInterval(progressTimer.current);
+        },
+        onend: () => {
+          setIsPlaying(false);
+          setTrackProgress(0);
+          clearInterval(progressTimer.current);
+        },
+        onloaderror: (id, err) => {
+          console.error('Error loading audio:', err);
+          setError('无法加载音频文件，可能是URL无效或者跨域限制');
+          setLoading(false);
+          
+          // 尝试使用备用URL
+          if (track.trackId && track.fileUrl !== `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`) {
+            const fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+            console.log('正在尝试备用URL:', fallbackUrl);
+            
+            // 更新当前track
+            const updatedTrack = { ...track, fileUrl: fallbackUrl };
+            setCurrentTrack(updatedTrack);
+            
+            // 延迟一秒后重试播放
+            setTimeout(() => {
+              playTrack(updatedTrack);
+            }, 1000);
+          }
+        },
+        onplayerror: (id, err) => {
+          console.error('Error playing audio:', err);
+          setError('无法播放音频，请稍后重试');
+          setLoading(false);
+        }
+      });
+      
+      // Start playback
+      sound.current.play();
+    } catch (error) {
+      console.error('Error in playTrack:', error);
+      setError('播放过程中发生错误');
+      setLoading(false);
+    }
   };
   
   // Pause playback
