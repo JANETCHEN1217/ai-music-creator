@@ -24,8 +24,9 @@ const CORS_PROXIES = [
   'https://cors-anywhere.herokuapp.com/'
 ];
 
-// API客户端类
+// API客户端类 - 简化请求流程，使用不同的策略尝试请求
 class ApiClient {
+  // 直接请求API的方法
   static async request(method, endpointPath, data = null, headers = {}, timeout = 15000) {
     const errors = [];
     
@@ -36,18 +37,36 @@ class ApiClient {
       ...headers
     };
     
-    // 确保路径格式正确（移除前导斜杠）
-    const normalizedPath = endpointPath.replace(/^\//, '');
+    // 确保路径格式正确 - 移除前导斜杠并处理_open格式
+    let normalizedPath = endpointPath.replace(/^\//, '');
     
-    // 构建 Vercel 代理 URL
+    // 特殊处理生成音乐API
+    if (normalizedPath.includes('generate')) {
+      // 直接使用固定路径，禁止使用 _open 格式
+      normalizedPath = 'generate';
+      // 强制使用POST方法
+      method = 'post';
+    }
+    
+    // 构建 Vercel 代理 URL - 统一使用不带_open前缀的格式
     const proxyUrl = `${VERCEL_PROXY_URL}/${normalizedPath}`;
     
     // 打印详细请求信息用于调试
     console.log(`准备发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
     console.log('请求头:', JSON.stringify(authHeaders));
-    if (data) console.log('请求数据:', JSON.stringify(data));
+    if (data) {
+      // 特殊处理生成音乐请求数据
+      if (normalizedPath.includes('generate')) {
+        // 确保使用mvVersion而非myVersion
+        const requestData = { ...data };
+        requestData.mvVersion = requestData.mvVersion || requestData.myVersion || 'chirp-v4';
+        if (requestData.myVersion) delete requestData.myVersion;
+        data = requestData;
+      }
+      console.log('请求数据:', JSON.stringify(data));
+    }
     
-    // 尝试使用Vercel API代理
+    // 尝试发起请求 - 先尝试Vercel代理
     try {
       console.log(`通过Vercel代理发起 ${method.toUpperCase()} 请求: ${proxyUrl}`);
       
@@ -73,17 +92,44 @@ class ApiClient {
       }
       errors.push({ proxy: 'vercel', error: error.message });
       
+      // 如果是生成音乐API遇到405错误，尝试使用直接API路径
+      if (normalizedPath.includes('generate') && error.response?.status === 405) {
+        try {
+          console.log('检测到405错误，尝试使用直接API路径...');
+          const directUrl = `${VERCEL_PROXY_URL}/open/suno/music/generate`;
+          
+          const directConfig = {
+            method: 'post',  // 强制使用POST
+            url: directUrl,
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders
+            },
+            timeout,
+            data
+          };
+          
+          console.log(`尝试直接API路径: ${directUrl}`);
+          const response = await axios(directConfig);
+          console.log('直接API路径请求成功, 响应数据:', response.data);
+          return response.data;
+        } catch (directError) {
+          console.error(`直接API路径请求失败: ${directError.message}`);
+          errors.push({ proxy: 'direct', error: directError.message });
+        }
+      }
+      
       // 如果是开发环境，继续尝试本地代理
       if (!isProduction) {
         try {
-          // 构建代理URL
-          let proxyUrl = `${LOCAL_PROXY_URL}/${normalizedPath}`;
+          // 构建本地代理URL
+          const localProxyUrl = `${LOCAL_PROXY_URL}/${normalizedPath}`;
           
-          console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
+          console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${localProxyUrl}`);
           
           const requestConfig = {
             method,
-            url: proxyUrl,
+            url: localProxyUrl,
             headers: {
               'Content-Type': 'application/json',
               ...authHeaders
@@ -150,10 +196,10 @@ class MusicService {
       
       console.log('最终请求数据:', requestData);
       
-      // 使用正确的 API 路径格式，明确指定POST方法
-      const endpoint = `_open/suno/music/generate`;
+      // 使用简化的路径，让代理服务器处理路径转换
+      const endpoint = 'generate';
       
-      // 直接传递 endpoint 路径给 request 方法，确保使用POST
+      // 发起请求
       const response = await ApiClient.request('post', endpoint, requestData);
       
       // 验证响应
