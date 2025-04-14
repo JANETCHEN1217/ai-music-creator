@@ -7,7 +7,7 @@ const currentDomain = isProduction ? window.location.origin : 'http://localhost:
 // API基础URL
 const API_URL = `${currentDomain}/api/suno`;
 
-// API配置 - 保留以便在后端使用
+// API配置 - 从环境变量获取Suno API凭据
 const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn'; 
 const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
 const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
@@ -15,29 +15,47 @@ const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
 // API请求方法 - 统一处理API调用
 const callApi = async (method, path, data = null, params = {}) => {
   // 构建请求URL和参数
-  let url = `${API_URL}?path=${path}`;
+  let url;
   
-  // 添加其他查询参数
-  Object.keys(params).forEach(key => {
-    url += `&${key}=${encodeURIComponent(params[key])}`;
-  });
+  // 开发环境使用本地代理，生产环境使用Vercel代理
+  if (isProduction) {
+    url = `${API_URL}?path=${path}`;
+    // 添加其他查询参数
+    Object.keys(params).forEach(key => {
+      url += `&${key}=${encodeURIComponent(params[key])}`;
+    });
+  } else {
+    // 本地开发环境直接调用Suno API
+    url = `${SUNO_API_URL}/_open/suno/music/${path}`;
+    if (Object.keys(params).length > 0) {
+      const queryParams = new URLSearchParams(params);
+      url += `?${queryParams.toString()}`;
+    }
+  }
 
   try {
     // 从localStorage获取用户设置的API令牌（如果有）
-    const userApiToken = localStorage.getItem('sunoApiToken');
+    const userApiToken = localStorage.getItem('sunoApiToken') || SUNO_API_TOKEN;
+    const userId = SUNO_API_USERID;
+    
+    if (!userApiToken) {
+      throw new Error('API令牌未设置，请在设置中配置API令牌');
+    }
+    
+    if (!userId) {
+      throw new Error('用户ID未设置，请在设置中配置用户ID');
+    }
     
     // 发送请求
     const config = {
       method,
       url,
       ...(data ? { data } : {}),
-      headers: {}
+      headers: {
+        'X-Token': userApiToken,
+        'X-UserId': userId
+      }
     };
-    
-    // 如果有用户设置的令牌，添加到请求头
-    if (userApiToken) {
-      config.headers['X-API-TOKEN'] = userApiToken;
-    }
     
     console.log(`发送API请求: ${method.toUpperCase()} ${url}`);
     if (data) console.log('请求数据:', data);
@@ -51,27 +69,36 @@ const callApi = async (method, path, data = null, params = {}) => {
     
     return response.data;
   } catch (error) {
-    // 特殊错误处理
+    // 详细错误处理
     if (error.response) {
-      // 检查是否是API配置错误 (500错误)
-      if (error.response.status === 500) {
-        const errorMsg = error.response.data?.msg || '';
-        if (errorMsg.includes('服务配置不完整') || errorMsg.includes('API令牌未设置')) {
-          console.error('API配置错误: API令牌未正确设置');
-          throw new Error('API令牌未配置或无效。请在API配置中设置有效的令牌。');
-        }
+      // API配置错误
+      if (error.response.status === 401 || error.response.status === 403) {
+        console.error('API认证错误: 令牌无效或未授权');
+        throw new Error('API令牌无效或未授权。请确认您的API令牌和用户ID是否正确。');
       }
       
-      // 405 Method Not Allowed
+      // 请求方法不允许
       if (error.response.status === 405) {
         console.error('请求方法不被允许:', method, url);
-        throw new Error('API请求方法不被允许，可能是服务器配置问题。');
+        throw new Error('API请求方法不被允许。请确认API接口路径是否正确。');
       }
       
-      // 检查是否有详细错误信息
-      const errorMsg = error.response.data?.msg || '未知错误';
+      // API参数错误
+      if (error.response.status === 400) {
+        console.error('请求参数错误:', error.response.data);
+        throw new Error(`API参数错误: ${error.response.data?.msg || '请求参数格式有误'}`);
+      }
+      
+      // 服务器内部错误
+      if (error.response.status === 500) {
+        console.error('服务器内部错误:', error.response.data);
+        throw new Error(`服务器错误: ${error.response.data?.msg || '服务内部错误，请稍后再试'}`);
+      }
+      
+      // 其他HTTP错误
+      const errorMsg = error.response.data?.msg || `未知错误 (${error.response.status})`;
       console.error(`服务器错误(${error.response.status}):`, errorMsg);
-      throw new Error(`服务器错误: ${errorMsg}`);
+      throw new Error(`API错误: ${errorMsg}`);
     }
     
     // 网络错误
@@ -102,7 +129,10 @@ class MusicService {
           mvVersion: "chirp-v4",
           inputType: "10",
           makeInstrumental: isInstrumental === true ? "true" : "false", 
-          gptDescriptionPrompt: description || "一首愉快的阳光歌曲"
+          gptDescriptionPrompt: description || "一首愉快的阳光歌曲",
+          // 添加认证信息
+          token: localStorage.getItem('sunoApiToken') || '',
+          userId: '13411892959'
         };
       } else {
         // 自定义模式
@@ -112,7 +142,10 @@ class MusicService {
           makeInstrumental: isInstrumental === true ? "true" : "false",
           prompt: lyrics || "",
           tags: Array.isArray(style) ? style.join(',') : style,
-          title: (Array.isArray(style) ? style.join(' ') : style) || description || "我的歌曲"
+          title: (Array.isArray(style) ? style.join(' ') : style) || description || "我的歌曲",
+          // 添加认证信息
+          token: localStorage.getItem('sunoApiToken') || '',
+          userId: '13411892959'
         };
       }
       
@@ -125,18 +158,7 @@ class MusicService {
       };
     } catch (error) {
       console.error('生成音乐失败:', error.message);
-      
-      // 判断错误类型，提供更友好的错误消息
-      if (error.message.includes('API密钥未配置')) {
-        throw new Error(`无法生成音乐：API密钥未正确配置。请联系管理员设置API密钥。`);
-      } else if (error.message.includes('服务器错误')) {
-        throw new Error(`音乐生成服务器错误: ${error.message}`);
-      } else if (error.message.includes('请求方法不被允许')) {
-        throw new Error(`音乐生成API调用错误: 请求方法不被允许，请联系管理员。`);
-      }
-      
-      // 默认错误消息
-      throw new Error(`无法连接到音乐生成服务。请检查网络连接或稍后再试。\n详细错误: ${error.message}`);
+      throw new Error(`无法生成音乐: ${error.message}`);
     }
   }
 
@@ -157,7 +179,7 @@ class MusicService {
       };
     } catch (error) {
       console.error('检查状态失败:', error.message);
-      throw new Error('无法检查音乐生成状态，请稍后再试。');
+      throw new Error(`无法检查音乐生成状态: ${error.message}`);
     }
   }
 
@@ -173,7 +195,7 @@ class MusicService {
       };
     } catch (error) {
       console.error('生成歌词失败:', error.message);
-      throw new Error('无法生成歌词，请稍后再试。');
+      throw new Error(`无法生成歌词: ${error.message}`);
     }
   }
 
@@ -189,7 +211,7 @@ class MusicService {
       };
     } catch (error) {
       console.error('伴奏分离失败:', error.message);
-      throw new Error('无法进行伴奏分离，请稍后再试。');
+      throw new Error(`无法进行伴奏分离: ${error.message}`);
     }
   }
 
@@ -205,7 +227,7 @@ class MusicService {
       };
     } catch (error) {
       console.error('获取WAV文件失败:', error.message);
-      throw new Error('无法获取高质量WAV文件，请稍后再试。');
+      throw new Error(`无法获取高质量WAV文件: ${error.message}`);
     }
   }
 
@@ -221,7 +243,7 @@ class MusicService {
       };
     } catch (error) {
       console.error('获取历史记录失败:', error.message);
-      throw new Error('无法获取音乐历史记录，请稍后再试。');
+      throw new Error(`无法获取音乐历史记录: ${error.message}`);
     }
   }
 

@@ -18,8 +18,11 @@ console.log("API环境配置:", {
 // API请求方法 - 统一处理API调用
 const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null, customUserId = null) => {
   try {
-    // 构建完整URL - 使用API管理员建议的路径
-    const url = `${SUNO_API_URL}/api/${endpoint}`;
+    // 构建完整URL - 使用正确的API端点
+    // 注意：根据错误日志，正确的URL可能是https://suno4.cn/api/v1/endpoint或/api/suno/endpoint
+    const url = endpoint === 'generate' 
+      ? `https://api.suno4.cn/v1/generate` 
+      : `https://api.suno4.cn/v1/${endpoint}`;
     
     // 使用自定义令牌或环境变量中的令牌
     const apiToken = customToken || SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
@@ -42,7 +45,7 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
     }
     
     // 合并请求数据和参数到一个对象中 - 使用POST body形式
-    let requestData = { ...data };
+    let requestData = { ...data } || {};
     
     // 将查询参数也添加到请求体中
     if (Object.keys(params).length > 0) {
@@ -67,22 +70,29 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
     
     console.log('最终请求数据:', JSON.stringify(requestData, null, 2));
     
-    // 准备请求配置 - 统一使用POST方法
+    // 尝试另一种请求头格式：添加X-Token和X-UserId头，同时也在请求体中包含token和userId
     const requestConfig = {
-      method: 'post', // 始终使用POST方式
+      method: 'post',
       url: url,
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'X-Token': apiToken,
+        'X-UserId': userId
       },
       data: requestData,
-      timeout: 30000 // 30秒超时
+      timeout: 30000
     };
     
     console.log('最终请求配置:', JSON.stringify({
       method: requestConfig.method,
       url: requestConfig.url,
-      headers: requestConfig.headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Token': apiToken ? '已设置' : '未设置',
+        'X-UserId': userId || '未设置'
+      },
       data: requestConfig.data
     }, null, 2));
     
