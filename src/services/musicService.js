@@ -1,31 +1,31 @@
 import axios from 'axios';
 
-// 获取当前域名作为API基础URL
+// Get current domain as API base URL
 const isProduction = process.env.NODE_ENV === 'production';
 const currentDomain = isProduction ? window.location.origin : 'http://localhost:3000';
 
-// API基础URL
+// API base URL
 const API_URL = `${currentDomain}/api/suno`;
 
-// API配置 - 从环境变量获取Suno API凭据
+// API configuration - Get Suno API credentials from environment variables
 const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://dzwlai.com/apiuser'; 
 const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
 const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
 
-// API请求方法 - 统一处理API调用
+// API request method - Unified API call handling
 const callApi = async (method, path, data = null, params = {}) => {
-  // 构建请求URL和参数
+  // Build request URL and parameters
   let url;
   
-  // 开发环境使用本地代理，生产环境使用Vercel代理
+  // Use local proxy in development, Vercel proxy in production
   if (isProduction) {
     url = `${API_URL}?path=${path}`;
-    // 添加其他查询参数
+    // Add other query parameters
     Object.keys(params).forEach(key => {
       url += `&${key}=${encodeURIComponent(params[key])}`;
     });
   } else {
-    // 本地开发环境直接调用Suno API - 使用正确的路径格式
+    // Local development environment directly calls Suno API - Use correct path format
     url = `${SUNO_API_URL}/_open/suno/music/${path}`;
     if (Object.keys(params).length > 0) {
       const queryParams = new URLSearchParams(params);
@@ -34,19 +34,19 @@ const callApi = async (method, path, data = null, params = {}) => {
   }
 
   try {
-    // 从localStorage获取用户设置的API令牌（如果有）
+    // Get user-set API token from localStorage (if any)
     const userApiToken = localStorage.getItem('sunoApiToken') || SUNO_API_TOKEN;
     const userId = SUNO_API_USERID;
     
     if (!userApiToken) {
-      throw new Error('API令牌未设置，请在设置中配置API令牌');
+      throw new Error('API token not set. Please configure API token in settings');
     }
     
     if (!userId) {
-      throw new Error('用户ID未设置，请在设置中配置用户ID');
+      throw new Error('User ID not set. Please configure user ID in settings');
     }
     
-    // 发送请求
+    // Send request
     const config = {
       method,
       url,
@@ -57,58 +57,58 @@ const callApi = async (method, path, data = null, params = {}) => {
       }
     };
     
-    console.log(`发送API请求: ${method.toUpperCase()} ${url}`);
-    if (data) console.log('请求数据:', data);
+    console.log(`Sending API request: ${method.toUpperCase()} ${url}`);
+    if (data) console.log('Request data:', data);
     
     const response = await axios(config);
     
-    // 验证响应
+    // Validate response
     if (!response.data || response.data.code !== 200) {
-      throw new Error(response.data?.msg || '请求失败');
+      throw new Error(response.data?.msg || 'Request failed');
     }
     
     return response.data;
   } catch (error) {
-    // 详细错误处理
+    // Detailed error handling
     if (error.response) {
-      // API配置错误
+      // API configuration error
       if (error.response.status === 401 || error.response.status === 403) {
-        console.error('API认证错误: 令牌无效或未授权');
-        throw new Error('API令牌无效或未授权。请确认您的API令牌和用户ID是否正确。');
+        console.error('API authentication error: Invalid token or unauthorized');
+        throw new Error('Invalid API token or unauthorized. Please verify your API token and user ID.');
       }
       
-      // 请求方法不允许
+      // Method not allowed
       if (error.response.status === 405) {
-        console.error('请求方法不被允许:', method, url);
-        throw new Error('API请求方法不被允许。请确认API接口路径是否正确。');
+        console.error('Request method not allowed:', method, url);
+        throw new Error('API request method not allowed. Please verify the API endpoint path.');
       }
       
-      // API参数错误
+      // API parameter error
       if (error.response.status === 400) {
-        console.error('请求参数错误:', error.response.data);
-        throw new Error(`API参数错误: ${error.response.data?.msg || '请求参数格式有误'}`);
+        console.error('Request parameter error:', error.response.data);
+        throw new Error(`API parameter error: ${error.response.data?.msg || 'Invalid request parameter format'}`);
       }
       
-      // 服务器内部错误
+      // Server internal error
       if (error.response.status === 500) {
-        console.error('服务器内部错误:', error.response.data);
-        throw new Error(`服务器错误: ${error.response.data?.msg || '服务内部错误，请稍后再试'}`);
+        console.error('Server internal error:', error.response.data);
+        throw new Error(`Server error: ${error.response.data?.msg || 'Internal service error, please try again later'}`);
       }
       
-      // 其他HTTP错误
-      const errorMsg = error.response.data?.msg || `未知错误 (${error.response.status})`;
-      console.error(`服务器错误(${error.response.status}):`, errorMsg);
-      throw new Error(`API错误: ${errorMsg}`);
+      // Other HTTP errors
+      const errorMsg = error.response.data?.msg || `Unknown error (${error.response.status})`;
+      console.error(`Server error (${error.response.status}):`, errorMsg);
+      throw new Error(`API error: ${errorMsg}`);
     }
     
-    // 网络错误
-    console.error(`API请求失败 (${path}):`, error.message);
+    // Network error
+    console.error(`API request failed (${path}):`, error.message);
     throw error;
   }
 };
 
 class MusicService {
-  // 生成音乐
+  // Generate music
   static async generateTrack({
     mode,
     description,
@@ -118,76 +118,70 @@ class MusicService {
     duration = 30
   }) {
     try {
-      console.log('开始生成音乐...');
+      console.log('Starting music generation...');
       
-      // 构建请求数据
+      // Build request data
       let requestData = {};
       
       if (mode === 'simple') {
-        // 灵感模式
+        // Inspiration mode
         requestData = {
           mvVersion: "chirp-v4",
           inputType: "10",
           makeInstrumental: isInstrumental === true ? "true" : "false", 
-          gptDescriptionPrompt: description || "一首愉快的阳光歌曲",
-          // 添加认证信息
-          token: localStorage.getItem('sunoApiToken') || '',
-          userId: '13411892959'
+          gptDescriptionPrompt: description || "A happy sunshine song",
         };
       } else {
-        // 自定义模式
+        // Custom mode
         requestData = {
           mvVersion: "chirp-v4",
           inputType: "20",
           makeInstrumental: isInstrumental === true ? "true" : "false",
           prompt: lyrics || "",
           tags: Array.isArray(style) ? style.join(',') : style,
-          title: (Array.isArray(style) ? style.join(' ') : style) || description || "我的歌曲",
-          // 添加认证信息
-          token: localStorage.getItem('sunoApiToken') || '',
-          userId: '13411892959'
+          title: (Array.isArray(style) ? style.join(' ') : style) || description || "My Song",
         };
       }
       
-      // 发送API请求
+      // Send API request
       const response = await callApi('post', 'generate', requestData);
+      
+      console.log('Generation response:', response);
       
       return {
         trackId: response.data?.taskBatchId || "",
-        items: response.data?.items || []
+        items: response.data?.items || [],
+        status: 'pending'
       };
     } catch (error) {
-      console.error('生成音乐失败:', error.message);
-      throw new Error(`无法生成音乐: ${error.message}`);
+      console.error('Music generation failed:', error.message);
+      throw new Error(`Unable to generate music: ${error.message}`);
     }
   }
 
-  // 检查音乐生成状态
+  // Check music generation status
   static async checkGenerationStatus(trackId) {
     try {
       if (!trackId) {
-        throw new Error('任务ID不能为空');
+        throw new Error('Task ID cannot be empty');
       }
       
-      console.log(`开始查询音乐生成状态，trackId: ${trackId}`);
+      console.log(`Checking music generation status, trackId: ${trackId}`);
       
-      // 构建请求数据 - 使用POST body方式
+      // Build request data - Using POST body method
       const requestData = { 
-        taskBatchId: trackId,
-        // 添加认证信息
-        token: localStorage.getItem('sunoApiToken') || '',
-        userId: '13411892959'
+        taskBatchId: trackId
       };
       
-      // 发送API请求 - 使用POST方法而不是GET
+      // Send API request - Using POST method instead of GET
       const response = await callApi('post', 'status', requestData);
       
-      console.log('状态查询响应:', response);
+      console.log('Status query response:', response);
       
-      // 如果没有正确的响应结构，给出更清晰的错误
+      // If there is no correct response structure, give a clearer error
       if (!response.data) {
-        console.error('状态查询响应格式错误:', response);
-        throw new Error('服务器返回的状态数据格式错误');
+        console.error('Status query response format error:', response);
+        throw new Error('Incorrect status data format returned by server');
       }
       
       return {
@@ -196,15 +190,15 @@ class MusicService {
         items: response.data?.items || []
       };
     } catch (error) {
-      console.error('检查状态失败:', error.message);
-      throw new Error(`无法检查音乐生成状态: ${error.message}`);
+      console.error('Status check failed:', error.message);
+      throw new Error(`Unable to check music generation status: ${error.message}`);
     }
   }
 
-  // 生成歌词
+  // Generate lyrics
   static async generateLyrics(prompt) {
     try {
-      // 发送API请求
+      // Send API request
       const response = await callApi('post', 'lyrics', { prompt });
       
       return {
@@ -212,15 +206,15 @@ class MusicService {
         title: response.data?.title || ""
       };
     } catch (error) {
-      console.error('生成歌词失败:', error.message);
-      throw new Error(`无法生成歌词: ${error.message}`);
+      console.error('Lyrics generation failed:', error.message);
+      throw new Error(`Unable to generate lyrics: ${error.message}`);
     }
   }
 
-  // 伴奏分离
+  // Separate vocals and instrumental
   static async separateVocalAndInstrumental(clipId) {
     try {
-      // 发送API请求
+      // Send API request
       const response = await callApi('get', 'stems', null, { clipId });
       
       return {
@@ -228,15 +222,15 @@ class MusicService {
         items: response.data?.items || []
       };
     } catch (error) {
-      console.error('伴奏分离失败:', error.message);
-      throw new Error(`无法进行伴奏分离: ${error.message}`);
+      console.error('Vocal/instrumental separation failed:', error.message);
+      throw new Error(`Unable to separate vocals and instrumental: ${error.message}`);
     }
   }
 
-  // 获取WAV文件
+  // Get WAV file
   static async getWavFile(clipId) {
     try {
-      // 发送API请求
+      // Send API request
       const response = await callApi('get', 'wav', null, { clipId });
       
       return {
@@ -244,35 +238,39 @@ class MusicService {
         items: response.data?.items || []
       };
     } catch (error) {
-      console.error('获取WAV文件失败:', error.message);
-      throw new Error(`无法获取高质量WAV文件: ${error.message}`);
+      console.error('Failed to get WAV file:', error.message);
+      throw new Error(`Unable to get high-quality WAV file: ${error.message}`);
     }
   }
 
-  // 获取历史记录
-  static async getMusicHistory(pageNum = 1, pageSize = 10) {
+  // Get music generation history
+  static async getMusicHistory() {
     try {
-      // 发送API请求
-      const response = await callApi('get', 'my', null, { pageNum, pageSize });
+      // Send API request
+      const response = await callApi('get', 'list');
       
+      return response.data?.items || [];
+    } catch (error) {
+      console.error('Failed to get music history:', error.message);
+      throw new Error(`Unable to get music generation history: ${error.message}`);
+    }
+  }
+
+  // Get available tags
+  static async getTags() {
+    try {
+      // In a real implementation, this would call the API
+      // For now, we'll return a hardcoded list of tags
       return {
-        list: response.data?.list || [],
-        total: response.data?.total || 0
+        genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
+        moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
+        voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
+        tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
       };
     } catch (error) {
-      console.error('获取历史记录失败:', error.message);
-      throw new Error(`无法获取音乐历史记录: ${error.message}`);
+      console.error('Failed to get tags:', error.message);
+      throw new Error(`Unable to get music tags: ${error.message}`);
     }
-  }
-
-  // 获取标签 - 使用本地数据而非API调用
-  static async getTags() {
-    return {
-      genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
-      moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
-      voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
-      tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
-    };
   }
 }
 

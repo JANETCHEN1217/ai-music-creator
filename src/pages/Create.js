@@ -41,13 +41,14 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
+import LyricsIcon from '@mui/icons-material/Description';
 import { Howl } from 'howler';
 import MusicService from '../services/musicService';
 import { useUser } from '../contexts/UserContext';
 
 const Create = () => {
   const { user } = useUser();
-  const [mode, setMode] = useState('custom');
+  const [mode, setMode] = useState('simple');
   const [isInstrumental, setIsInstrumental] = useState(false);
   const [songTitle, setSongTitle] = useState('');
   const [songStyle, setSongStyle] = useState([]);
@@ -62,6 +63,9 @@ const Create = () => {
   const [generatedTracks, setGeneratedTracks] = useState([]);
   const [duration, setDuration] = useState(30);
   const [generationTime, setGenerationTime] = useState(0);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [currentLyrics, setCurrentLyrics] = useState('');
+  
   const [availableTags, setAvailableTags] = useState({
     Genre: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
     Moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
@@ -69,7 +73,7 @@ const Create = () => {
     Tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
   });
 
-  // 音乐播放相关
+  // Music playback related
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [trackProgress, setTrackProgress] = useState(0);
@@ -113,6 +117,12 @@ const Create = () => {
     setDuration(newValue);
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   const handleGenerateMusic = async () => {
     setLoading(true);
     setError(null);
@@ -140,61 +150,29 @@ const Create = () => {
       });
 
       clearInterval(timer);
-
-      // Create cover image for the track
-      const coverImage = `https://source.unsplash.com/300x300/?${encodeURIComponent(songTitle || description || 'music')}`;
       
-      const newTrack = {
-        ...result,
-        title: songTitle || description || 'My Song',
-        coverImage,
-        timeStamp: new Date().toISOString(),
-        generationTime: Math.floor((Date.now() - startTime) / 1000)
-      };
-
-      setGeneratedTracks([newTrack, ...generatedTracks]);
-      setSuccess(true);
+      console.log('Generation result:', result);
       
-      // Poll for status if the generation is not immediate
-      if (result.status === 'pending') {
-        const checkStatus = async () => {
-          try {
-            const status = await MusicService.checkGenerationStatus(result.trackId);
-            if (status.status === 'completed') {
-              setGeneratedTracks(prev => {
-                const updatedTracks = [...prev];
-                const index = updatedTracks.findIndex(t => t.trackId === result.trackId);
-                if (index !== -1) {
-                  updatedTracks[index] = {
-                    ...updatedTracks[index],
-                    ...status,
-                    status: 'completed'
-                  };
-                }
-                return updatedTracks;
-              });
-            } else if (status.status === 'failed') {
-              setError('Music generation failed. Please try again.');
-              setGeneratedTracks(prev => {
-                const updatedTracks = [...prev];
-                const index = updatedTracks.findIndex(t => t.trackId === result.trackId);
-                if (index !== -1) {
-                  updatedTracks[index] = {
-                    ...updatedTracks[index],
-                    status: 'failed'
-                  };
-                }
-                return updatedTracks;
-              });
-            } else {
-              setTimeout(checkStatus, 5000); // Check again in 5 seconds
-            }
-          } catch (error) {
-            console.error('Error checking status:', error);
-          }
+      if (result.trackId) {
+        // Create a placeholder track
+        const placeholderTrack = {
+          trackId: result.trackId,
+          title: songTitle || description || 'New Track',
+          status: 'pending',
+          coverImage: `https://source.unsplash.com/random/300x300?music&${Date.now()}`,
+          timeStamp: new Date().toISOString(),
+          generationTime: Math.floor((Date.now() - startTime) / 1000)
         };
-        checkStatus();
+        
+        setGeneratedTracks(prev => [placeholderTrack, ...prev]);
+        
+        // Start polling for status
+        startStatusPolling(result.trackId);
+      } else {
+        throw new Error('No trackId returned from generation');
       }
+      
+      setSuccess(true);
     } catch (error) {
       console.error('Music generation error:', error);
       setError(error.message);
@@ -202,31 +180,122 @@ const Create = () => {
       setLoading(false);
     }
   };
-
-  // Getting track cover image based on title/description
-  const getTrackCoverImage = (title, description) => {
-    return `https://source.unsplash.com/300x300/?${encodeURIComponent(title || description || 'music')}`;
+  
+  // Start polling for track status
+  const startStatusPolling = (trackId) => {
+    console.log('Starting status polling for trackId:', trackId);
+    
+    // Clear existing polling interval if any
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+    }
+    
+    // Define the polling function
+    const pollStatus = async () => {
+      try {
+        console.log('Polling status for trackId:', trackId);
+        const status = await MusicService.checkGenerationStatus(trackId);
+        console.log('Status response:', status);
+        
+        if (status.taskStatus === 'success' || status.taskStatus === 'complete') {
+          // Generation completed successfully
+          clearInterval(pollingInterval.current);
+          
+          // Extract track data from the response
+          let trackData = {
+            trackId: trackId,
+            title: songTitle || description || 'My Track',
+            status: 'completed',
+          };
+          
+          // Process the items array to get audio URLs, cover image, etc.
+          if (status.items && status.items.length > 0) {
+            const item = status.items[0]; // Get the first item
+            
+            trackData = {
+              ...trackData,
+              fileUrl: item.url || '',
+              coverImage: item.imageUrl || `https://source.unsplash.com/random/300x300?music&${trackId}`,
+              lyrics: item.lyrics || '',
+              duration: item.duration || 30
+            };
+          }
+          
+          // Update the generated tracks list
+          setGeneratedTracks(prev => {
+            const updated = [...prev];
+            const index = updated.findIndex(t => t.trackId === trackId);
+            
+            if (index !== -1) {
+              updated[index] = { ...updated[index], ...trackData };
+            }
+            
+            return updated;
+          });
+          
+          // Automatically play the newly generated track
+          const updatedTrack = { ...trackData };
+          setCurrentTrack(updatedTrack);
+          playTrack(updatedTrack);
+        } 
+        else if (status.taskStatus === 'failed') {
+          // Generation failed
+          clearInterval(pollingInterval.current);
+          setError('Music generation failed. Please try again.');
+          
+          // Update track status
+          setGeneratedTracks(prev => {
+            const updated = [...prev];
+            const index = updated.findIndex(t => t.trackId === trackId);
+            
+            if (index !== -1) {
+              updated[index] = { 
+                ...updated[index], 
+                status: 'failed' 
+              };
+            }
+            
+            return updated;
+          });
+        }
+        // For other statuses (processing, pending), continue polling
+      } catch (error) {
+        console.error('Error polling status:', error);
+        // Don't clear the interval, try again next time
+      }
+    };
+    
+    // Poll immediately and then every 3 seconds
+    pollStatus();
+    pollingInterval.current = setInterval(pollStatus, 3000);
   };
-
-  // 播放音乐
+  
+  // Playing a track
   const playTrack = (track) => {
+    if (!track || !track.fileUrl) {
+      console.error('Cannot play track: missing URL', track);
+      return;
+    }
+    
+    console.log('Playing track:', track);
+    
+    // Stop current playback if any
     if (sound.current) {
       sound.current.stop();
       clearInterval(progressTimer.current);
     }
     
-    if (!track || !track.fileUrl) return;
-    
-    // 设置当前播放音乐
+    // Set the current track
     setCurrentTrack(track);
+    setCurrentLyrics(track.lyrics || '');
     
-    // 创建Howler实例
+    // Create new Howler sound instance
     sound.current = new Howl({
       src: [track.fileUrl],
       html5: true,
       onplay: () => {
         setIsPlaying(true);
-        // 启动进度条定时器
+        // Start progress tracking
         progressTimer.current = setInterval(() => {
           setTrackProgress(sound.current.seek());
         }, 1000);
@@ -244,27 +313,53 @@ const Create = () => {
         setIsPlaying(false);
         setTrackProgress(0);
         clearInterval(progressTimer.current);
+      },
+      onloaderror: (id, err) => {
+        console.error('Error loading audio:', err);
+        setError('Could not load the audio file');
+      },
+      onplayerror: (id, err) => {
+        console.error('Error playing audio:', err);
+        setError('Could not play the audio file');
       }
     });
     
+    // Start playback
     sound.current.play();
   };
   
-  // 暂停播放
+  // Pause playback
   const pausePlayback = () => {
     if (sound.current && isPlaying) {
       sound.current.pause();
     }
   };
   
-  // 继续播放
+  // Resume playback
   const resumePlayback = () => {
     if (sound.current && !isPlaying) {
       sound.current.play();
     }
   };
+  
+  // Download the current track
+  const downloadTrack = (track) => {
+    if (!track || !track.fileUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = track.fileUrl;
+    link.download = `${track.title || 'ai-music'}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  // Toggle lyrics display
+  const toggleLyrics = () => {
+    setShowLyrics(!showLyrics);
+  };
 
-  // 清理组件卸载时的副作用
+  // Clean up on component unmount
   useEffect(() => {
     return () => {
       if (sound.current) {
@@ -282,31 +377,31 @@ const Create = () => {
   return (
     <Box sx={{ flexGrow: 1, height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       <Grid container spacing={2} sx={{ height: '100%' }}>
-        {/* 左侧输入区域 */}
+        {/* Left column - Input area */}
         <Grid item xs={12} md={3} sx={{ height: '100%', overflowY: 'auto', p: 2 }}>
           <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h5" gutterBottom>创建音乐</Typography>
+            <Typography variant="h5" gutterBottom>Create Music</Typography>
             
-            {/* 模式选择标签页 */}
+            {/* Mode selection tabs */}
             <Tabs 
               value={mode} 
               onChange={(e, newValue) => setMode(newValue)}
               variant="fullWidth" 
               sx={{ mb: 3 }}
             >
-              <Tab label="简单模式" value="simple" />
-              <Tab label="自定义模式" value="custom" />
+              <Tab label="Simple Mode" value="simple" />
+              <Tab label="Custom Mode" value="custom" />
             </Tabs>
             
-            {/* 简单模式表单 */}
+            {/* Simple mode form */}
             {mode === 'simple' && (
               <>
-                <Typography variant="subtitle1" gutterBottom>描述你想要的音乐</Typography>
+                <Typography variant="subtitle1" gutterBottom>Describe your music</Typography>
                 <TextField
                   fullWidth
                   multiline
                   rows={6}
-                  placeholder="例如：一首轻快的夏日流行歌曲，带有明亮的吉他和欢快的节奏"
+                  placeholder="Example: A cheerful summer pop song with bright guitars and upbeat rhythm"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   sx={{ mb: 3 }}
@@ -319,27 +414,27 @@ const Create = () => {
                       onChange={(e) => setIsInstrumental(e.target.checked)}
                     />
                   }
-                  label="纯音乐（无人声）"
+                  label="Instrumental (No vocals)"
                   sx={{ mb: 2, display: 'block' }}
                 />
               </>
             )}
             
-            {/* 自定义模式表单 */}
+            {/* Custom mode form */}
             {mode === 'custom' && (
               <>
-                <Typography variant="subtitle1" gutterBottom>歌词内容</Typography>
+                <Typography variant="subtitle1" gutterBottom>Lyrics</Typography>
                 <TextField
                   fullWidth
                   multiline
                   rows={6}
-                  placeholder="输入歌词或歌曲描述..."
+                  placeholder="Enter lyrics or song description..."
                   value={songLyrics}
                   onChange={(e) => setSongLyrics(e.target.value)}
                   sx={{ mb: 3 }}
                 />
                 
-                <Typography variant="subtitle1" gutterBottom>音乐风格</Typography>
+                <Typography variant="subtitle1" gutterBottom>Music Style</Typography>
                 <Box sx={{ mb: 3 }}>
                   {availableTags.Genre.slice(0, 8).map(style => (
                     <Chip
@@ -352,7 +447,7 @@ const Create = () => {
                   ))}
                 </Box>
                 
-                <Typography variant="subtitle1" gutterBottom>情绪</Typography>
+                <Typography variant="subtitle1" gutterBottom>Mood</Typography>
                 <Box sx={{ mb: 3 }}>
                   {availableTags.Moods.slice(0, 6).map(mood => (
                     <Chip
@@ -372,7 +467,7 @@ const Create = () => {
                       onChange={(e) => setIsInstrumental(e.target.checked)}
                     />
                   }
-                  label="纯音乐（无人声）"
+                  label="Instrumental (No vocals)"
                   sx={{ mb: 2, display: 'block' }}
                 />
               </>
@@ -387,12 +482,12 @@ const Create = () => {
               startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <MusicNoteIcon />}
               sx={{ mt: 2 }}
             >
-              {loading ? '生成中...' : '生成音乐'}
+              {loading ? 'Generating...' : 'Generate Music'}
             </Button>
           </Paper>
         </Grid>
         
-        {/* 中间播放区域 */}
+        {/* Middle column - Player area */}
         <Grid item xs={12} md={6} sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
           <Paper 
             sx={{ 
@@ -408,7 +503,7 @@ const Create = () => {
           >
             {currentTrack ? (
               <>
-                {/* 曲目信息和封面 */}
+                {/* Track info and cover */}
                 <Box 
                   sx={{
                     width: '100%',
@@ -425,19 +520,19 @@ const Create = () => {
                   }}
                 >
                   <Box sx={{ p: 2, backgroundColor: 'rgba(0, 0, 0, 0.5)', color: 'white', borderRadius: '0 0 8px 8px' }}>
-                    <Typography variant="h6">{currentTrack.title || '未命名音乐'}</Typography>
+                    <Typography variant="h6">{currentTrack.title || 'Untitled Music'}</Typography>
                   </Box>
                 </Box>
                 
-                {/* 播放控制 */}
+                {/* Player controls */}
                 <Box sx={{ width: '100%', mb: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2" sx={{ mr: 1 }}>
-                      {trackProgress.toFixed(2)}
+                      {formatTime(trackProgress)}
                     </Typography>
                     <Slider
                       value={trackProgress}
-                      max={duration}
+                      max={currentTrack.duration || 30}
                       onChange={(e, newValue) => {
                         if (sound.current) {
                           sound.current.seek(newValue);
@@ -447,7 +542,7 @@ const Create = () => {
                       sx={{ flexGrow: 1, mx: 1 }}
                     />
                     <Typography variant="body2" sx={{ ml: 1 }}>
-                      {duration.toFixed(2)}
+                      {formatTime(currentTrack.duration || 30)}
                     </Typography>
                   </Box>
                   
@@ -461,18 +556,39 @@ const Create = () => {
                         <PlayArrowIcon fontSize="large" />
                       </IconButton>
                     )}
-                    <IconButton>
+                    <IconButton onClick={() => downloadTrack(currentTrack)}>
                       <DownloadIcon />
+                    </IconButton>
+                    <IconButton onClick={toggleLyrics} color={showLyrics ? "primary" : "default"}>
+                      <LyricsIcon />
                     </IconButton>
                   </Box>
                 </Box>
+                
+                {/* Lyrics display */}
+                {showLyrics && currentLyrics && (
+                  <Box sx={{ 
+                    width: '100%', 
+                    p: 2, 
+                    bgcolor: 'background.paper', 
+                    borderRadius: 1,
+                    maxHeight: 200,
+                    overflowY: 'auto',
+                    border: '1px solid rgba(0,0,0,0.1)'
+                  }}>
+                    <Typography variant="subtitle2" gutterBottom>Lyrics</Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                      {currentLyrics}
+                    </Typography>
+                  </Box>
+                )}
               </>
             ) : (
-              // 未选择曲目时的提示
+              // No track selected state
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <MusicNoteIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary">
-                  {loading ? '正在生成您的音乐...' : '请创建或选择一首音乐'}
+                  {loading ? 'Generating your music...' : 'Please create or select a track'}
                 </Typography>
                 {loading && (
                   <CircularProgress sx={{ mt: 3 }} />
@@ -482,15 +598,15 @@ const Create = () => {
           </Paper>
         </Grid>
         
-        {/* 右侧音乐列表 */}
+        {/* Right column - Music list */}
         <Grid item xs={12} md={3} sx={{ height: '100%', overflowY: 'auto', p: 2 }}>
           <Paper sx={{ p: 2, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>我的音乐</Typography>
+            <Typography variant="h6" gutterBottom>My Music</Typography>
             
             {generatedTracks.length === 0 ? (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80%' }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  还没有生成的音乐
+                  No tracks generated yet
                 </Typography>
               </Box>
             ) : (
@@ -502,9 +618,10 @@ const Create = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       cursor: 'pointer',
-                      boxShadow: currentTrack?.trackId === track.trackId ? '0 0 0 2px #1976d2' : 'none' 
+                      boxShadow: currentTrack?.trackId === track.trackId ? '0 0 0 2px #1976d2' : 'none',
+                      opacity: track.status === 'pending' ? 0.7 : 1
                     }}
-                    onClick={() => playTrack(track)}
+                    onClick={() => track.status === 'completed' && playTrack(track)}
                   >
                     <CardMedia
                       component="img"
@@ -515,20 +632,38 @@ const Create = () => {
                     <CardContent sx={{ pb: 1 }}>
                       <Typography variant="subtitle1" noWrap>{track.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {track.status === 'completed' ? '1m 35s' : `${track.generationTime || generationTime}s`}
+                        {track.status === 'completed' ? 
+                          formatTime(track.duration || 30) : 
+                          track.status === 'failed' ? 
+                            'Generation failed' : 
+                            `Generating... ${track.generationTime || generationTime}s`
+                        }
                       </Typography>
                     </CardContent>
                     <CardActions>
-                      <IconButton size="small" onClick={(e) => {
-                        e.stopPropagation();
-                        currentTrack?.trackId === track.trackId && isPlaying ? pausePlayback() : playTrack(track);
-                      }}>
-                        {currentTrack?.trackId === track.trackId && isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-                      </IconButton>
-                      
-                      <IconButton size="small">
-                        <DownloadIcon />
-                      </IconButton>
+                      {track.status === 'completed' ? (
+                        <>
+                          <IconButton size="small" onClick={(e) => {
+                            e.stopPropagation();
+                            currentTrack?.trackId === track.trackId && isPlaying ? pausePlayback() : playTrack(track);
+                          }}>
+                            {currentTrack?.trackId === track.trackId && isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                          </IconButton>
+                          
+                          <IconButton size="small" onClick={(e) => {
+                            e.stopPropagation();
+                            downloadTrack(track);
+                          }}>
+                            <DownloadIcon />
+                          </IconButton>
+                        </>
+                      ) : track.status === 'pending' ? (
+                        <CircularProgress size={24} sx={{ mx: 1 }} />
+                      ) : (
+                        <Typography variant="caption" color="error">
+                          Failed
+                        </Typography>
+                      )}
                     </CardActions>
                   </Card>
                 ))}
@@ -554,7 +689,7 @@ const Create = () => {
         open={success}
         autoHideDuration={6000}
         onClose={() => setSuccess(false)}
-        message="Song generated successfully!"
+        message="Music generation started successfully!"
         action={
           <IconButton size="small" color="inherit" onClick={() => setSuccess(false)}>
             <CloseIcon fontSize="small" />
