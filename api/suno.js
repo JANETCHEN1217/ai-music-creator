@@ -4,7 +4,7 @@ import axios from 'axios';
 // Suno API配置 - 明确使用环境变量
 const SUNO_API_URL = process.env.SUNO_API_URL || process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';
 const SUNO_API_TOKEN = process.env.SUNO_API_TOKEN || process.env.REACT_APP_SUNO_API_TOKEN || '';
-const SUNO_API_USERID = process.env.SUNO_API_USERID || process.env.REACT_APP_SUNO_API_USERID || '';
+const SUNO_API_USERID = process.env.SUNO_API_USERID || process.env.REACT_APP_SUNO_API_USERID || '13411892959';
 
 // 显示环境配置信息
 console.log("API环境配置:", {
@@ -15,50 +15,96 @@ console.log("API环境配置:", {
 });
 
 // API请求方法 - 统一处理API调用
-const callSunoApi = async (method, endpoint, data = null, params = {}) => {
+const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null) => {
   // 构建完整URL
   const url = `${SUNO_API_URL}/${endpoint}`;
   
+  // 使用自定义令牌或环境变量中的令牌
+  const apiToken = customToken || SUNO_API_TOKEN;
+  
   // 打印详细的请求信息
   console.log(`调用Suno API: ${method.toUpperCase()} ${url}`);
-  if (data) console.log('请求数据:', JSON.stringify(data));
-  if (Object.keys(params).length > 0) console.log('请求参数:', JSON.stringify(params));
+  console.log('API凭证:', {
+    'X-Token': apiToken ? '已设置' : '未设置',
+    'X-UserId': SUNO_API_USERID
+  });
+  
+  if (data) console.log('请求数据:', JSON.stringify(data, null, 2));
+  if (Object.keys(params).length > 0) console.log('请求参数:', JSON.stringify(params, null, 2));
   
   // 检查API凭证
-  if (!SUNO_API_TOKEN || !SUNO_API_USERID) {
-    console.error('API凭证未设置:', {
-      'X-Token': SUNO_API_TOKEN ? '已设置' : '未设置',
-      'X-UserId': SUNO_API_USERID ? '已设置' : '未设置'
-    });
-    throw { status: 500, message: 'API凭证未正确配置，请联系管理员' };
+  if (!apiToken) {
+    console.error('API令牌未设置');
+    throw { status: 500, message: 'API令牌未设置，请联系管理员' };
+  }
+  
+  // 格式化请求数据
+  let formattedData = data;
+  if (data && endpoint === 'open/suno/music/generate') {
+    // 确保数据格式正确
+    formattedData = {
+      ...data,
+      // 确保字段名称正确
+      mvVersion: data.mvVersion || data.myVersion || "chirp-v4",
+      // 确保布尔值正确转换为字符串
+      makeInstrumental: data.makeInstrumental === true ? "true" : "false"
+    };
+    // 移除可能导致问题的字段
+    if (formattedData.myVersion) delete formattedData.myVersion;
+    
+    console.log('格式化后的请求数据:', JSON.stringify(formattedData, null, 2));
   }
   
   try {
+    // 格式化参数
+    const queryParams = { ...params };
+    
     // 发送API请求
+    console.log('最终请求配置:', {
+      method: method.toLowerCase(),
+      url,
+      headers: {
+        'X-Token': `${apiToken}`,
+        'X-UserId': `${SUNO_API_USERID}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      params: queryParams,
+      data: formattedData ? JSON.stringify(formattedData) : undefined
+    });
+    
     const response = await axios({
       method: method.toLowerCase(),
       url: url,
       headers: {
-        'X-Token': SUNO_API_TOKEN,
+        'X-Token': apiToken,
         'X-UserId': SUNO_API_USERID,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      params: params,
-      data: data,
+      params: queryParams,
+      data: formattedData,
       timeout: 30000 // 30秒超时
     });
     
     console.log(`API响应状态码: ${response.status}`);
+    console.log('API响应数据:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('API请求失败:', error.message);
     if (error.response) {
       console.error('错误状态码:', error.response.status);
-      console.error('错误详情:', JSON.stringify(error.response.data));
-      throw { status: error.response.status, message: JSON.stringify(error.response.data) };
+      console.error('错误详情:', JSON.stringify(error.response.data, null, 2));
+      console.error('请求头:', JSON.stringify(error.config?.headers, null, 2));
+      console.error('请求URL:', error.config?.url);
+      console.error('请求方法:', error.config?.method);
+      throw { 
+        status: error.response.status, 
+        message: `API错误: ${JSON.stringify(error.response.data)}`
+      };
     }
-    throw { status: 500, message: error.message };
+    console.error('完整错误对象:', error);
+    throw { status: 500, message: `请求失败: ${error.message}` };
   }
 };
 
@@ -69,7 +115,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-API-TOKEN');
 
   // 处理预检请求
   if (req.method === 'OPTIONS') {
@@ -90,12 +136,21 @@ export default async function handler(req, res) {
 
   try {
     const { path } = req.query;
-    console.log(`收到${req.method}请求, 路径: ${path}`, JSON.stringify(req.body));
+    console.log(`收到${req.method}请求, 路径: ${path}`, JSON.stringify(req.body, null, 2));
+    
+    // 从请求头中获取自定义令牌
+    const customToken = req.headers['x-api-token'];
+    if (customToken) {
+      console.log('使用客户端提供的API令牌');
+    }
+    
+    // 使用环境变量中的令牌或客户端提供的令牌
+    const apiToken = customToken || SUNO_API_TOKEN;
     
     // 检查API配置
-    if (!SUNO_API_TOKEN || !SUNO_API_USERID) {
-      console.error('API凭证未完全配置');
-      return error(500, '服务配置不完整，请联系管理员');
+    if (!apiToken) {
+      console.error('API令牌未设置');
+      return error(500, '服务配置不完整: API令牌未设置，请联系管理员');
     }
     
     // 生成音乐
@@ -108,7 +163,9 @@ export default async function handler(req, res) {
         const result = await callSunoApi(
           'post', 
           'open/suno/music/generate', 
-          req.body
+          req.body,
+          {},
+          apiToken
         );
         
         return success(result.data);
@@ -134,7 +191,8 @@ export default async function handler(req, res) {
           'get', 
           'open/suno/music/getState', 
           null, 
-          { taskBatchId }
+          { taskBatchId },
+          apiToken
         );
         
         return success(result.data);
@@ -154,7 +212,9 @@ export default async function handler(req, res) {
         const result = await callSunoApi(
           'post', 
           'open/suno/music/generateLyrics', 
-          req.body
+          req.body,
+          {},
+          apiToken
         );
         
         return success(result.data);
@@ -180,7 +240,8 @@ export default async function handler(req, res) {
           'get', 
           'open/suno/music/stems', 
           null, 
-          { clipId }
+          { clipId },
+          apiToken
         );
         
         return success(result.data);
@@ -206,7 +267,8 @@ export default async function handler(req, res) {
           'get', 
           'open/suno/music/wav', 
           null, 
-          { clipId }
+          { clipId },
+          apiToken
         );
         
         return success(result.data);
@@ -229,7 +291,8 @@ export default async function handler(req, res) {
           'get', 
           'open/suno/music/my', 
           null, 
-          { pageNum: pageNum || 1, pageSize: pageSize || 10 }
+          { pageNum: pageNum || 1, pageSize: pageSize || 10 },
+          apiToken
         );
         
         return success(result.data);

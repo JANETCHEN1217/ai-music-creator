@@ -21,14 +21,23 @@ const callApi = async (method, path, data = null, params = {}) => {
   Object.keys(params).forEach(key => {
     url += `&${key}=${encodeURIComponent(params[key])}`;
   });
-  
+
   try {
+    // 从localStorage获取用户设置的API令牌（如果有）
+    const userApiToken = localStorage.getItem('sunoApiToken');
+    
     // 发送请求
     const config = {
       method,
       url,
-      ...(data ? { data } : {})
+      ...(data ? { data } : {}),
+      headers: {}
     };
+    
+    // 如果有用户设置的令牌，添加到请求头
+    if (userApiToken) {
+      config.headers['X-API-TOKEN'] = userApiToken;
+    }
     
     console.log(`发送API请求: ${method.toUpperCase()} ${url}`);
     if (data) console.log('请求数据:', data);
@@ -47,9 +56,9 @@ const callApi = async (method, path, data = null, params = {}) => {
       // 检查是否是API配置错误 (500错误)
       if (error.response.status === 500) {
         const errorMsg = error.response.data?.msg || '';
-        if (errorMsg.includes('服务配置不完整') || errorMsg.includes('API凭证未正确配置')) {
-          console.error('API配置错误: API密钥未正确设置');
-          throw new Error('API密钥未配置或无效。请联系管理员设置正确的API密钥。');
+        if (errorMsg.includes('服务配置不完整') || errorMsg.includes('API令牌未设置')) {
+          console.error('API配置错误: API令牌未正确设置');
+          throw new Error('API令牌未配置或无效。请在API配置中设置有效的令牌。');
         }
       }
       

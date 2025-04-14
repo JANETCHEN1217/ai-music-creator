@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Box, Button, Container, Typography, TextField, Select, MenuItem,
   FormControl, InputLabel, Paper, Grid, Divider, CircularProgress,
-  Chip, Stack, Alert, AlertTitle
+  Chip, Stack, Alert, AlertTitle, FormControlLabel, Switch
 } from '@mui/material';
 import { styled } from '@mui/system';
 
@@ -20,22 +20,50 @@ const CodeBlock = styled('pre')(({ theme }) => ({
 
 const ApiTest = () => {
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [testType, setTestType] = useState('connection');
   const [customEndpoint, setCustomEndpoint] = useState('_open/suno/music/getState');
   const [customMethod, setCustomMethod] = useState('GET');
   const [customData, setCustomData] = useState('{}');
+  const [token, setToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
+  const [tokenSaved, setTokenSaved] = useState(false);
+
+  // 组件加载时尝试从localStorage读取保存的令牌
+  useEffect(() => {
+    const savedToken = localStorage.getItem('sunoApiToken');
+    if (savedToken) {
+      setToken(savedToken);
+      setTokenSaved(true);
+    }
+  }, []);
+  
+  // 保存令牌到localStorage
+  const saveToken = () => {
+    if (token) {
+      localStorage.setItem('sunoApiToken', token);
+      setTokenSaved(true);
+    }
+  };
+  
+  // 清除令牌
+  const clearToken = () => {
+    localStorage.removeItem('sunoApiToken');
+    setToken('');
+    setTokenSaved(false);
+    setResult(null);
+  };
 
   // 运行测试连接
   const runConnectionTest = async () => {
     setLoading(true);
-    setResults(null);
+    setResult(null);
     setError(null);
     
     try {
       const response = await axios.get('/api/test-connection');
-      setResults(response.data);
+      setResult(response.data);
     } catch (err) {
       console.error('测试连接失败:', err);
       setError(err.message);
@@ -47,7 +75,7 @@ const ApiTest = () => {
   // 运行自定义 API 测试
   const runCustomTest = async () => {
     setLoading(true);
-    setResults(null);
+    setResult(null);
     setError(null);
     
     try {
@@ -84,7 +112,7 @@ const ApiTest = () => {
       console.log('发送请求:', config);
       const response = await axios(config);
       
-      setResults({
+      setResult({
         status: response.status,
         data: response.data
       });
@@ -111,7 +139,7 @@ const ApiTest = () => {
   // 简单音乐生成测试
   const runSimpleMusicGenerate = async () => {
     setLoading(true);
-    setResults(null);
+    setResult(null);
     setError(null);
     
     try {
@@ -132,7 +160,7 @@ const ApiTest = () => {
         data: requestData
       });
       
-      setResults({
+      setResult({
         status: response.status,
         data: response.data,
         message: '音乐生成请求已提交'
@@ -149,203 +177,153 @@ const ApiTest = () => {
     }
   };
 
+  const testAPI = async () => {
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    
+    try {
+      // 测试API配置
+      const testResponse = await axios.post('/api/suno?path=generate', {
+        mvVersion: "chirp-v4",
+        inputType: "10",
+        makeInstrumental: "false",
+        gptDescriptionPrompt: "测试API连接"
+      }, {
+        headers: token ? { 'X-API-TOKEN': token } : {}
+      });
+      
+      setResult(testResponse.data);
+      console.log('API测试成功:', testResponse.data);
+      
+      // 如果测试成功但令牌尚未保存，自动保存
+      if (!tokenSaved && token) {
+        localStorage.setItem('sunoApiToken', token);
+        setTokenSaved(true);
+      }
+    } catch (err) {
+      console.error('API测试失败:', err);
+      setError(err.response?.data?.msg || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Typography variant="h3" align="center">API 测试工具</Typography>
-        <Typography>使用此工具测试 Suno API 连接和各种 API 端点功能</Typography>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Suno API 连接测试
+        </Typography>
         
-        <Paper sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="h5">测试类型</Typography>
-            <FormControl fullWidth>
-              <InputLabel>选择测试类型</InputLabel>
-              <Select
-                value={testType}
-                onChange={(e) => setTestType(e.target.value)}
-                label="选择测试类型"
-              >
-                <MenuItem value="connection">基础连接测试</MenuItem>
-                <MenuItem value="custom">自定义 API 请求</MenuItem>
-                <MenuItem value="generate">音乐生成测试</MenuItem>
-              </Select>
-            </FormControl>
-            
-            {testType === 'custom' && (
-              <>
-                <Typography variant="h6">自定义 API 设置</Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={3}>
-                    <FormControl fullWidth>
-                      <InputLabel>请求方法</InputLabel>
-                      <Select
-                        value={customMethod}
-                        onChange={(e) => setCustomMethod(e.target.value)}
-                        label="请求方法"
-                      >
-                        <MenuItem value="GET">GET</MenuItem>
-                        <MenuItem value="POST">POST</MenuItem>
-                        <MenuItem value="PUT">PUT</MenuItem>
-                        <MenuItem value="DELETE">DELETE</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={9}>
-                    <TextField 
-                      fullWidth
-                      label="API 路径"
-                      placeholder="例如: _open/suno/music/getState" 
-                      value={customEndpoint}
-                      onChange={(e) => setCustomEndpoint(e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
-                
-                <Typography>请求数据 (JSON 格式):</Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={5}
-                  placeholder='{"key": "value"}'
-                  value={customData}
-                  onChange={(e) => setCustomData(e.target.value)}
+        <Alert severity="info" sx={{ mb: 4 }}>
+          此页面用于测试Suno API的连接是否正常。您需要在此处设置API令牌才能使用音乐生成功能。
+        </Alert>
+        
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            API令牌设置
+          </Typography>
+          <TextField
+            fullWidth
+            label="API令牌"
+            variant="outlined"
+            type={showToken ? "text" : "password"}
+            value={token}
+            onChange={(e) => {
+              setToken(e.target.value);
+              setTokenSaved(false);
+            }}
+            placeholder="请输入从Suno获取的API令牌"
+            sx={{ mb: 1 }}
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <FormControlLabel 
+              control={
+                <Switch 
+                  checked={showToken} 
+                  onChange={(e) => setShowToken(e.target.checked)} 
                 />
-              </>
-            )}
-            
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={testType === 'generate' ? runSimpleMusicGenerate : handleRunTest} 
-              disabled={loading}
-              sx={{ mt: 2 }}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : (
-                testType === 'connection' 
-                  ? '运行连接测试' 
-                  : testType === 'generate'
-                    ? '运行音乐生成测试'
-                    : '运行自定义测试'
-              )}
-            </Button>
+              } 
+              label="显示令牌" 
+            />
+            <Box>
+              <Button 
+                variant="outlined" 
+                color="primary" 
+                onClick={saveToken}
+                disabled={!token || tokenSaved}
+                size="small"
+                sx={{ mr: 1 }}
+              >
+                {tokenSaved ? "已保存" : "保存令牌"}
+              </Button>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                onClick={clearToken}
+                disabled={!token}
+                size="small"
+              >
+                清除令牌
+              </Button>
+            </Box>
           </Box>
-        </Paper>
+          {tokenSaved && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              API令牌已保存，应用程序将使用此令牌调用API
+            </Alert>
+          )}
+        </Box>
         
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', py: 4 }}>
-            <CircularProgress size={60} />
-            <Typography sx={{ mt: 2 }}>请求处理中...</Typography>
-          </Box>
-        )}
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={testAPI}
+          disabled={loading}
+          sx={{ mt: 2, mb: 4 }}
+        >
+          {loading ? <CircularProgress size={24} color="inherit" /> : "测试API连接"}
+        </Button>
         
         {error && (
-          <Paper sx={{ p: 3, bgcolor: '#fdeded' }}>
-            <Alert severity="error">
-              <AlertTitle>测试失败</AlertTitle>
-              <Typography sx={{ fontWeight: 'bold' }}>错误信息: {error.message || error}</Typography>
-              
-              {error.status && (
-                <Typography sx={{ mt: 1 }}>状态码: {error.status}</Typography>
-              )}
-              
-              {error.response && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold' }}>响应数据:</Typography>
-                  <CodeBlock>
-                    {JSON.stringify(error.response, null, 2)}
-                  </CodeBlock>
-                </Box>
-              )}
-            </Alert>
-          </Paper>
+          <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+            <Typography variant="subtitle2">API测试失败</Typography>
+            <Typography variant="body2">{error}</Typography>
+          </Alert>
         )}
         
-        {results && (
-          <Paper sx={{ p: 3, bgcolor: '#edf7ed' }}>
-            <Alert severity="success">
-              <AlertTitle>测试成功</AlertTitle>
-              
-              {results.message && (
-                <Typography sx={{ mt: 1 }}>{results.message}</Typography>
-              )}
-              
-              {results.status && (
-                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography sx={{ fontWeight: 'bold' }}>状态码:</Typography>
-                  <Chip label={results.status} color="success" size="small" />
-                </Box>
-              )}
-              
-              {results.apiConfig && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold' }}>API 配置:</Typography>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                    <Chip 
-                      label={`URL: ${results.apiConfig.url || "未设置"}`} 
-                      color={results.apiConfig.url ? "success" : "error"}
-                      size="small"
-                    />
-                    <Chip 
-                      label={`Token: ${results.apiConfig.hasToken ? "已设置" : "未设置"}`} 
-                      color={results.apiConfig.hasToken ? "success" : "error"}
-                      size="small"
-                    />
-                    <Chip 
-                      label={`UserId: ${results.apiConfig.hasUserId ? "已设置" : "未设置"}`} 
-                      color={results.apiConfig.hasUserId ? "success" : "error"}
-                      size="small"
-                    />
-                  </Stack>
-                </Box>
-              )}
-              
-              {results.results && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6">测试结果:</Typography>
-                  <Divider sx={{ my: 1 }} />
-                  {results.results.map((result, index) => (
-                    <Paper key={index} sx={{ mt: 2, p: 2, bgcolor: result.success ? '#f0f7f0' : '#fdeded' }}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Chip 
-                          label={result.success ? "成功" : "失败"} 
-                          color={result.success ? "success" : "error"}
-                          size="small"
-                        />
-                        <Typography sx={{ fontWeight: 'bold' }}>{result.method}</Typography>
-                        {result.status && <Chip label={result.status} size="small" />}
-                      </Stack>
-                      
-                      {result.error && (
-                        <Alert severity="error" sx={{ mt: 1 }}>
-                          错误: {result.error}
-                        </Alert>
-                      )}
-                      
-                      {(result.response || result.data) && (
-                        <Box sx={{ mt: 1 }}>
-                          <Typography sx={{ fontWeight: 'bold' }}>响应:</Typography>
-                          <CodeBlock>
-                            {JSON.stringify(result.response || result.data, null, 2)}
-                          </CodeBlock>
-                        </Box>
-                      )}
-                    </Paper>
-                  ))}
-                </Box>
-              )}
-              
-              {results.data && !results.results && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold' }}>响应数据:</Typography>
-                  <CodeBlock>
-                    {JSON.stringify(results.data, null, 2)}
-                  </CodeBlock>
-                </Box>
-              )}
+        {result && (
+          <Box sx={{ mt: 3 }}>
+            <Alert severity="success" sx={{ mb: 2 }}>
+              API连接测试成功！服务器正常响应。
             </Alert>
-          </Paper>
+            
+            <Typography variant="h6" gutterBottom>API响应</Typography>
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: '#1d1d1d', overflow: 'auto' }}>
+              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </Paper>
+          </Box>
         )}
-      </Box>
+        
+        <Divider sx={{ my: 4 }} />
+        
+        <Box sx={{ mt: 2 }}>
+          <Button variant="outlined" color="primary" href="/api-guide">
+            查看API配置指南
+          </Button>
+          <Button 
+            variant="outlined" 
+            color="secondary" 
+            href="/" 
+            sx={{ ml: 2 }}
+          >
+            返回首页
+          </Button>
+        </Box>
+      </Paper>
     </Container>
   );
 };
