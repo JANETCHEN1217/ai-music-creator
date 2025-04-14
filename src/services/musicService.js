@@ -4,69 +4,53 @@ import axios from 'axios';
 const isProduction = process.env.NODE_ENV === 'production';
 const currentDomain = isProduction ? window.location.origin : 'http://localhost:3000';
 
-// Vercel API代理URL（不带尾部斜杠）
-const VERCEL_PROXY_URL = `${currentDomain}/api/proxy`;
-
-// 使用本地代理服务器地址（仅开发环境）
-const LOCAL_PROXY_URL = 'http://localhost:5000/proxy';
-
 // API配置
 const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';
 const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
 const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
 
-// 使用环境变量读取备用 API 端点 (仅保留新API)
-const BACKUP_API_ENDPOINTS = [];
+// 使用CORS代理进行直接API调用 (避开405错误)
+const CORS_PROXY_URL = 'https://corsproxy.io/?';
 
-// CORS 代理前缀
-const CORS_PROXIES = [
-  'https://corsproxy.io/?',
-  'https://cors-anywhere.herokuapp.com/'
-];
-
-// API客户端类 - 极简版直接请求实现
-class ApiClient {
-  static async request(method, endpoint, data = null, headers = {}, timeout = 15000) {
-    const errors = [];
-    
-    // 认证头
-    const authHeaders = {
+// API帮助函数 - 直接调用API，避开代理服务
+const callApi = async (method, endpoint, data = null) => {
+  // 构建完整URL (使用CORS代理)
+  const url = `${CORS_PROXY_URL}${SUNO_API_URL}/${endpoint}`;
+  
+  // 打印请求信息
+  console.log(`【API请求】${method.toUpperCase()} ${url}`);
+  if (data) console.log('【请求数据】', JSON.stringify(data));
+  
+  // 构建请求配置
+  const config = {
+    method,
+    url,
+    headers: {
       'X-Token': SUNO_API_TOKEN,
       'X-UserId': SUNO_API_USERID,
       'Content-Type': 'application/json',
-      ...headers
-    };
-    
-    // 直接使用简单路径，不再使用_open前缀
-    const proxyUrl = `${VERCEL_PROXY_URL}/${endpoint}`;
-    
-    console.log(`准备请求: ${method.toUpperCase()} ${proxyUrl}`);
-    
-    try {
-      const response = await axios({
-        method,
-        url: proxyUrl,
-        headers: authHeaders,
-        timeout,
-        ...(data ? { data } : {})
-      });
-      
-      console.log('请求成功, 响应:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error(`请求失败: ${error.message}`);
-      if (error.response) {
-        console.error('状态码:', error.response.status);
-      }
-      
-      // 所有尝试失败
-      throw new Error(`请求失败: ${error.message}`);
+      'Accept': 'application/json'
+    },
+    ...(data ? { data } : {})
+  };
+  
+  try {
+    // 发送请求
+    const response = await axios(config);
+    console.log('【API响应】', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('【API错误】', error.message);
+    if (error.response) {
+      console.error('【错误状态】', error.response.status);
+      console.error('【错误数据】', error.response.data);
     }
+    throw error;
   }
-}
+};
 
 class MusicService {
-  // 生成音乐 - 极简实现
+  // 生成音乐 - 直接调用API实现
   static async generateTrack({
     mode,
     description,
@@ -105,11 +89,11 @@ class MusicService {
         };
       }
       
-      // 直接使用 generate 端点
-      const response = await ApiClient.request('post', 'generate', requestData);
+      // 直接调用API
+      const response = await callApi('post', 'open/suno/music/generate', requestData);
       
-      if (!response || response.error || response.code !== 200) {
-        throw new Error(response?.error || response?.msg || "创建音乐失败");
+      if (response.error || response.code !== 200) {
+        throw new Error(response.error || response.msg || "创建音乐失败");
       }
       
       return {
@@ -122,10 +106,10 @@ class MusicService {
     }
   }
 
-  // 检查音乐生成状态 - 简化实现
+  // 检查音乐生成状态
   static async checkGenerationStatus(trackId) {
     try {
-      const response = await ApiClient.request('get', `status?taskBatchId=${trackId}`);
+      const response = await callApi('get', `open/suno/music/getState?taskBatchId=${trackId}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "检查音乐状态失败");
@@ -142,10 +126,10 @@ class MusicService {
     }
   }
 
-  // 生成歌词 - 简化实现
+  // 生成歌词
   static async generateLyrics(prompt) {
     try {
-      const response = await ApiClient.request('post', 'lyrics', { prompt });
+      const response = await callApi('post', 'open/suno/music/generateLyrics', { prompt });
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "生成歌词失败");
@@ -161,10 +145,10 @@ class MusicService {
     }
   }
 
-  // 伴奏分离 - 简化实现
+  // 伴奏分离
   static async separateVocalAndInstrumental(clipId) {
     try {
-      const response = await ApiClient.request('get', `stems?clipId=${clipId}`);
+      const response = await callApi('get', `open/suno/music/stems?clipId=${clipId}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "伴奏分离失败");
@@ -180,10 +164,10 @@ class MusicService {
     }
   }
 
-  // 获取WAV文件 - 简化实现
+  // 获取WAV文件
   static async getWavFile(clipId) {
     try {
-      const response = await ApiClient.request('get', `wav?clipId=${clipId}`);
+      const response = await callApi('get', `open/suno/music/wav?clipId=${clipId}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "获取WAV文件失败");
@@ -199,10 +183,10 @@ class MusicService {
     }
   }
 
-  // 获取历史记录 - 简化实现
+  // 获取历史记录
   static async getMusicHistory(pageNum = 1, pageSize = 10) {
     try {
-      const response = await ApiClient.request('get', `history?pageNum=${pageNum}&pageSize=${pageSize}`);
+      const response = await callApi('get', `open/suno/music/my?pageNum=${pageNum}&pageSize=${pageSize}`);
       
       if (response.error || response.code !== 200) {
         throw new Error(response.error || response.msg || "获取历史记录失败");
@@ -218,8 +202,7 @@ class MusicService {
     }
   }
 
-  // 其他方法也同样简化...
-  // 以下为必要的标签获取方法
+  // 获取标签
   static async getTags() {
     const defaultTags = {
       genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
