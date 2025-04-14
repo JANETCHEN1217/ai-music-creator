@@ -2,9 +2,17 @@
 import axios from 'axios';
 
 // Suno API配置 - 明确使用环境变量
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';
-const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
-const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
+const SUNO_API_URL = process.env.SUNO_API_URL || process.env.REACT_APP_SUNO_API_URL || 'https://suno4.cn';
+const SUNO_API_TOKEN = process.env.SUNO_API_TOKEN || process.env.REACT_APP_SUNO_API_TOKEN || '';
+const SUNO_API_USERID = process.env.SUNO_API_USERID || process.env.REACT_APP_SUNO_API_USERID || '';
+
+// 显示环境配置信息
+console.log("API环境配置:", {
+  SUNO_API_URL: SUNO_API_URL,
+  SUNO_API_TOKEN: SUNO_API_TOKEN ? "已设置" : "未设置",
+  SUNO_API_USERID: SUNO_API_USERID ? "已设置" : "未设置",
+  NODE_ENV: process.env.NODE_ENV
+});
 
 // API请求方法 - 统一处理API调用
 const callSunoApi = async (method, endpoint, data = null, params = {}) => {
@@ -15,6 +23,15 @@ const callSunoApi = async (method, endpoint, data = null, params = {}) => {
   console.log(`调用Suno API: ${method.toUpperCase()} ${url}`);
   if (data) console.log('请求数据:', JSON.stringify(data));
   if (Object.keys(params).length > 0) console.log('请求参数:', JSON.stringify(params));
+  
+  // 检查API凭证
+  if (!SUNO_API_TOKEN || !SUNO_API_USERID) {
+    console.error('API凭证未设置:', {
+      'X-Token': SUNO_API_TOKEN ? '已设置' : '未设置',
+      'X-UserId': SUNO_API_USERID ? '已设置' : '未设置'
+    });
+    throw { status: 500, message: 'API凭证未正确配置，请联系管理员' };
+  }
   
   try {
     // 发送API请求
@@ -38,8 +55,8 @@ const callSunoApi = async (method, endpoint, data = null, params = {}) => {
     console.error('API请求失败:', error.message);
     if (error.response) {
       console.error('错误状态码:', error.response.status);
-      console.error('错误详情:', error.response.data);
-      throw { status: error.response.status, data: error.response.data };
+      console.error('错误详情:', JSON.stringify(error.response.data));
+      throw { status: error.response.status, message: JSON.stringify(error.response.data) };
     }
     throw { status: 500, message: error.message };
   }
@@ -73,7 +90,13 @@ export default async function handler(req, res) {
 
   try {
     const { path } = req.query;
-    console.log(`收到${req.method}请求, 路径: ${path}`);
+    console.log(`收到${req.method}请求, 路径: ${path}`, JSON.stringify(req.body));
+    
+    // 检查API配置
+    if (!SUNO_API_TOKEN || !SUNO_API_USERID) {
+      console.error('API凭证未完全配置');
+      return error(500, '服务配置不完整，请联系管理员');
+    }
     
     // 生成音乐
     if (path === 'generate') {
@@ -81,13 +104,18 @@ export default async function handler(req, res) {
         return error(405, '不支持的请求方法');
       }
       
-      const result = await callSunoApi(
-        'post', 
-        'open/suno/music/generate', 
-        req.body
-      );
-      
-      return success(result.data);
+      try {
+        const result = await callSunoApi(
+          'post', 
+          'open/suno/music/generate', 
+          req.body
+        );
+        
+        return success(result.data);
+      } catch (err) {
+        console.error('生成音乐失败:', err);
+        return error(err.status || 500, `音乐生成失败: ${err.message}`);
+      }
     }
     
     // 查询状态
@@ -101,14 +129,19 @@ export default async function handler(req, res) {
         return error(400, '缺少必要参数: taskBatchId');
       }
       
-      const result = await callSunoApi(
-        'get', 
-        'open/suno/music/getState', 
-        null, 
-        { taskBatchId }
-      );
-      
-      return success(result.data);
+      try {
+        const result = await callSunoApi(
+          'get', 
+          'open/suno/music/getState', 
+          null, 
+          { taskBatchId }
+        );
+        
+        return success(result.data);
+      } catch (err) {
+        console.error('查询状态失败:', err);
+        return error(err.status || 500, `状态查询失败: ${err.message}`);
+      }
     }
     
     // 生成歌词
@@ -117,13 +150,18 @@ export default async function handler(req, res) {
         return error(405, '不支持的请求方法');
       }
       
-      const result = await callSunoApi(
-        'post', 
-        'open/suno/music/generateLyrics', 
-        req.body
-      );
-      
-      return success(result.data);
+      try {
+        const result = await callSunoApi(
+          'post', 
+          'open/suno/music/generateLyrics', 
+          req.body
+        );
+        
+        return success(result.data);
+      } catch (err) {
+        console.error('生成歌词失败:', err);
+        return error(err.status || 500, `歌词生成失败: ${err.message}`);
+      }
     }
     
     // 伴奏分离
@@ -137,14 +175,19 @@ export default async function handler(req, res) {
         return error(400, '缺少必要参数: clipId');
       }
       
-      const result = await callSunoApi(
-        'get', 
-        'open/suno/music/stems', 
-        null, 
-        { clipId }
-      );
-      
-      return success(result.data);
+      try {
+        const result = await callSunoApi(
+          'get', 
+          'open/suno/music/stems', 
+          null, 
+          { clipId }
+        );
+        
+        return success(result.data);
+      } catch (err) {
+        console.error('伴奏分离失败:', err);
+        return error(err.status || 500, `伴奏分离失败: ${err.message}`);
+      }
     }
     
     // WAV下载
@@ -158,14 +201,19 @@ export default async function handler(req, res) {
         return error(400, '缺少必要参数: clipId');
       }
       
-      const result = await callSunoApi(
-        'get', 
-        'open/suno/music/wav', 
-        null, 
-        { clipId }
-      );
-      
-      return success(result.data);
+      try {
+        const result = await callSunoApi(
+          'get', 
+          'open/suno/music/wav', 
+          null, 
+          { clipId }
+        );
+        
+        return success(result.data);
+      } catch (err) {
+        console.error('获取WAV失败:', err);
+        return error(err.status || 500, `获取WAV失败: ${err.message}`);
+      }
     }
     
     // 历史记录
@@ -176,14 +224,19 @@ export default async function handler(req, res) {
       
       const { pageNum, pageSize } = req.query;
       
-      const result = await callSunoApi(
-        'get', 
-        'open/suno/music/my', 
-        null, 
-        { pageNum: pageNum || 1, pageSize: pageSize || 10 }
-      );
-      
-      return success(result.data);
+      try {
+        const result = await callSunoApi(
+          'get', 
+          'open/suno/music/my', 
+          null, 
+          { pageNum: pageNum || 1, pageSize: pageSize || 10 }
+        );
+        
+        return success(result.data);
+      } catch (err) {
+        console.error('获取历史记录失败:', err);
+        return error(err.status || 500, `获取历史记录失败: ${err.message}`);
+      }
     }
     
     // 未知端点

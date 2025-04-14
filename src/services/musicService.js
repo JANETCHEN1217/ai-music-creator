@@ -42,6 +42,30 @@ const callApi = async (method, path, data = null, params = {}) => {
     
     return response.data;
   } catch (error) {
+    // 特殊错误处理
+    if (error.response) {
+      // 检查是否是API配置错误 (500错误)
+      if (error.response.status === 500) {
+        const errorMsg = error.response.data?.msg || '';
+        if (errorMsg.includes('服务配置不完整') || errorMsg.includes('API凭证未正确配置')) {
+          console.error('API配置错误: API密钥未正确设置');
+          throw new Error('API密钥未配置或无效。请联系管理员设置正确的API密钥。');
+        }
+      }
+      
+      // 405 Method Not Allowed
+      if (error.response.status === 405) {
+        console.error('请求方法不被允许:', method, url);
+        throw new Error('API请求方法不被允许，可能是服务器配置问题。');
+      }
+      
+      // 检查是否有详细错误信息
+      const errorMsg = error.response.data?.msg || '未知错误';
+      console.error(`服务器错误(${error.response.status}):`, errorMsg);
+      throw new Error(`服务器错误: ${errorMsg}`);
+    }
+    
+    // 网络错误
     console.error(`API请求失败 (${path}):`, error.message);
     throw error;
   }
@@ -92,6 +116,17 @@ class MusicService {
       };
     } catch (error) {
       console.error('生成音乐失败:', error.message);
+      
+      // 判断错误类型，提供更友好的错误消息
+      if (error.message.includes('API密钥未配置')) {
+        throw new Error(`无法生成音乐：API密钥未正确配置。请联系管理员设置API密钥。`);
+      } else if (error.message.includes('服务器错误')) {
+        throw new Error(`音乐生成服务器错误: ${error.message}`);
+      } else if (error.message.includes('请求方法不被允许')) {
+        throw new Error(`音乐生成API调用错误: 请求方法不被允许，请联系管理员。`);
+      }
+      
+      // 默认错误消息
       throw new Error(`无法连接到音乐生成服务。请检查网络连接或稍后再试。\n详细错误: ${error.message}`);
     }
   }

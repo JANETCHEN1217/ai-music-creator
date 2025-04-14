@@ -149,12 +149,14 @@ const Navbar = () => {
                 </MenuItem>,
                 <MenuItem key="profile" component={RouterLink} to="/profile">Profile</MenuItem>,
                 <MenuItem key="settings">Settings</MenuItem>,
+                <MenuItem key="api-guide" component={RouterLink} to="/api-guide">API Configuration</MenuItem>,
                 <MenuItem key="logout" onClick={handleLogout}>Logout</MenuItem>
               ]
             ) : (
-              <MenuItem onClick={handleLogin}>
-                Sign in with Google
-              </MenuItem>
+              [
+                <MenuItem key="login" onClick={handleLogin}>Sign in with Google</MenuItem>,
+                <MenuItem key="api-guide" component={RouterLink} to="/api-guide">API Configuration</MenuItem>
+              ]
             )}
           </Menu>
         </Box>
