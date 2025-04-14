@@ -8,6 +8,7 @@ import Create from './pages/Create';
 import Pricing from './pages/Pricing';
 import MyMusic from './pages/MyMusic';
 import Tutorials from './pages/Tutorials';
+import ApiTest from './pages/ApiTest';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -67,6 +68,7 @@ function App() {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/my-songs" element={<MyMusic />} />
                 <Route path="/tutorials" element={<Tutorials />} />
+                <Route path="/api-test" element={<ApiTest />} />
               </Routes>
             </main>
             <Footer />

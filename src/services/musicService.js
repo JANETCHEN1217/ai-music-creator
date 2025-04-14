@@ -42,10 +42,14 @@ class ApiClient {
     // 构建 Vercel 代理 URL
     const proxyUrl = `${VERCEL_PROXY_URL}/${normalizedPath}`;
     
+    // 打印详细请求信息用于调试
+    console.log(`准备发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
+    console.log('请求头:', JSON.stringify(authHeaders));
+    if (data) console.log('请求数据:', JSON.stringify(data));
+    
     // 尝试使用Vercel API代理
     try {
       console.log(`通过Vercel代理发起 ${method.toUpperCase()} 请求: ${proxyUrl}`);
-      if (data) console.log('请求数据:', JSON.stringify(data));
       
       const requestConfig = {
         method,
@@ -63,6 +67,10 @@ class ApiClient {
       return response.data;
     } catch (error) {
       console.error(`Vercel代理请求失败: ${error.message}`);
+      if (error.response) {
+        console.error('错误状态码:', error.response.status);
+        console.error('错误响应数据:', error.response.data);
+      }
       errors.push({ proxy: 'vercel', error: error.message });
       
       // 如果是开发环境，继续尝试本地代理
@@ -72,7 +80,6 @@ class ApiClient {
           let proxyUrl = `${LOCAL_PROXY_URL}/${normalizedPath}`;
           
           console.log(`通过本地代理发起 ${method.toUpperCase()} 请求到: ${proxyUrl}`);
-          if (data) console.log('请求数据:', JSON.stringify(data));
           
           const requestConfig = {
             method,
@@ -112,15 +119,15 @@ class MusicService {
     duration = 30
   }) {
     try {
-      console.log('开始生成音乐');
+      console.log('开始生成音乐', { mode, description, style, isInstrumental, duration });
       
-      // 创建符合API格式的请求数据 - 确保使用 mvVersion 而不是 myVersion
+      // 创建符合API格式的请求数据
       let requestData = {};
       
       if (mode === 'simple') {
         // 灵感模式
         requestData = {
-          "mvVersion": "chirp-v4", // 注意这里使用 mvVersion 而不是 myVersion
+          "mvVersion": "chirp-v4",
           "inputType": "10",
           "makeInstrumental": isInstrumental === true ? "true" : "false", 
           "gptDescriptionPrompt": description || "一首愉快的阳光歌曲",
@@ -129,7 +136,7 @@ class MusicService {
       } else {
         // 自定义模式
         requestData = {
-          "mvVersion": "chirp-v4", // 注意这里使用 mvVersion 而不是 myVersion
+          "mvVersion": "chirp-v4",
           "inputType": "20",
           "makeInstrumental": isInstrumental === true ? "true" : "false",
           "prompt": lyrics || "",
@@ -141,16 +148,21 @@ class MusicService {
         };
       }
       
-      console.log('请求数据:', requestData);
+      console.log('最终请求数据:', requestData);
       
-      // 使用正确的 API 路径格式
+      // 使用正确的 API 路径格式，明确指定POST方法
       const endpoint = `_open/suno/music/generate`;
       
-      // 直接传递 endpoint 路径给 request 方法
+      // 直接传递 endpoint 路径给 request 方法，确保使用POST
       const response = await ApiClient.request('post', endpoint, requestData);
+      
+      // 验证响应
+      if (!response) {
+        throw new Error("API返回空响应");
+      }
 
       if (response.error || response.code !== 200) {
-        throw new Error(response.error || response.msg || "创建音乐失败");
+        throw new Error(response.error || response.msg || `创建音乐失败: ${JSON.stringify(response)}`);
       }
 
       // 返回任务ID
@@ -159,7 +171,7 @@ class MusicService {
         items: response.data.items || []
       };
     } catch (error) {
-      console.error(`生成音乐时出错:`, error.message);
+      console.error(`生成音乐时出错:`, error);
       throw new Error(`无法连接到音乐生成服务。请检查网络连接或稍后再试。\n详细错误: ${error.message}`);
     }
   }

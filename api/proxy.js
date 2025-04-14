@@ -48,19 +48,32 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: '缺少API路径参数' });
     }
     
-    // 移除可能的前导斜杠
+    // 移除可能的前导斜杠，并规范化路径格式
     apiPath = apiPath.replace(/^\//, '');
     
     // 构建完整API URL
-    // 处理 _open 格式的API路径
     let apiUrl;
-    if (apiPath.startsWith('_open/')) {
-      // 直接转换 _open/suno/music/xxx 格式为 /open/suno/music/xxx
+    let requestMethod = req.method; // 默认使用请求的原始方法
+    
+    // 根据路径类型确定API URL和方法
+    if (apiPath.includes('suno/music/generate')) {
+      // 对于生成音乐的端点，总是使用POST方法
+      requestMethod = 'POST';
+      
+      // 根据路径格式构建正确的URL
+      if (apiPath.startsWith('_open/')) {
+        apiUrl = `${SUNO_API_URL}/${apiPath.replace('_open/', '')}`;
+      } else {
+        apiUrl = `${SUNO_API_URL}/open/suno/music/generate`;
+      }
+    } else if (apiPath.startsWith('_open/')) {
+      // 其他 _open 格式的API路径
       apiUrl = `${SUNO_API_URL}/${apiPath.replace('_open/', '')}`;
     } else {
       // 处理旧格式路径
       if (apiPath === 'generate') {
         apiUrl = `${SUNO_API_URL}/open/suno/music/generate`;
+        requestMethod = 'POST';
       } else if (apiPath === 'status' || apiPath === 'getState') {
         apiUrl = `${SUNO_API_URL}/open/suno/music/getState`;
         // 将旧的id参数转换为taskBatchId参数
@@ -73,11 +86,11 @@ module.exports = async (req, res) => {
       }
     }
     
-    console.log(`代理请求到: ${apiUrl}`);
+    console.log(`代理请求到: ${apiUrl}，使用方法: ${requestMethod}`);
 
     // 设置请求配置 - 使用正确的认证头
     const requestConfig = {
-      method: req.method,
+      method: requestMethod,
       url: apiUrl,
       headers: {
         'Content-Type': 'application/json',
@@ -88,10 +101,10 @@ module.exports = async (req, res) => {
       }
     };
 
-    // 如果是POST请求，附加请求体
-    if (req.method === 'POST' && req.body) {
+    // 如果是POST请求或方法被覆盖为POST，附加请求体
+    if (requestMethod === 'POST' && req.body) {
       // 直接使用请求体，确保参数命名正确
-      if (apiPath === 'generate' || apiPath === '_open/suno/music/generate' || apiPath.includes('/suno/music/generate')) {
+      if (apiPath.includes('generate') || apiPath === 'generate') {
         // 确保使用正确的参数格式 (mvVersion 而不是 myVersion)
         const newBody = {
           ...req.body,
@@ -109,7 +122,7 @@ module.exports = async (req, res) => {
     }
 
     // 如果是GET请求，附加查询参数
-    if (req.method === 'GET') {
+    if (requestMethod === 'GET') {
       const urlParts = req.url.split('?');
       if (urlParts.length > 1) {
         // 保留原始查询参数（除了path）
