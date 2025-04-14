@@ -18,8 +18,8 @@ console.log("API环境配置:", {
 // API请求方法 - 统一处理API调用
 const callSunoApi = async (method, endpoint, data = null, params = {}, customToken = null, customUserId = null) => {
   try {
-    // 构建完整URL
-    const url = `${SUNO_API_URL}/${endpoint}`;
+    // 构建完整URL - 确保使用正确的API路径格式
+    const url = `${SUNO_API_URL}/_open/suno/music/${endpoint}`;
     
     // 使用自定义令牌或环境变量中的令牌
     const apiToken = customToken || SUNO_API_TOKEN || 'sk-14c3e692bb0943b98f682a9d19b500b9';
@@ -43,7 +43,7 @@ const callSunoApi = async (method, endpoint, data = null, params = {}, customTok
     
     // 格式化请求数据
     let formattedData = data;
-    if (data && endpoint === 'open/suno/music/generate') {
+    if (data && endpoint === 'generate') {
       // 确保数据格式正确
       formattedData = {
         ...data,
@@ -206,7 +206,7 @@ export default async function handler(req, res) {
         console.log('处理音乐生成请求');
         const result = await callSunoApi(
           'post', 
-          'open/suno/music/generate', 
+          'generate', 
           req.body,
           {},
           apiToken,
@@ -235,7 +235,7 @@ export default async function handler(req, res) {
         console.log('处理状态查询请求');
         const result = await callSunoApi(
           'get', 
-          'open/suno/music/getState', 
+          'getState', 
           null, 
           { taskBatchId },
           apiToken,
@@ -259,7 +259,7 @@ export default async function handler(req, res) {
         console.log('处理歌词生成请求');
         const result = await callSunoApi(
           'post', 
-          'open/suno/music/generateLyrics', 
+          'generateLyrics', 
           req.body,
           {},
           apiToken,
@@ -288,7 +288,7 @@ export default async function handler(req, res) {
         console.log('处理伴奏分离请求');
         const result = await callSunoApi(
           'get', 
-          'open/suno/music/stems', 
+          'stems', 
           null, 
           { clipId },
           apiToken,
@@ -317,7 +317,7 @@ export default async function handler(req, res) {
         console.log('处理WAV下载请求');
         const result = await callSunoApi(
           'get', 
-          'open/suno/music/wav', 
+          'wav', 
           null, 
           { clipId },
           apiToken,
@@ -343,7 +343,7 @@ export default async function handler(req, res) {
         console.log('处理历史记录请求');
         const result = await callSunoApi(
           'get', 
-          'open/suno/music/my', 
+          'my', 
           null, 
           { pageNum: pageNum || 1, pageSize: pageSize || 10 },
           apiToken,
