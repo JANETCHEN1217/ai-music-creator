@@ -16,5 +16,15 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/kie/(.*)",
+      "destination": "/api/kie.js?path=$1"
+    },
+    {
+      "source": "/api/kie",
+      "destination": "/api/kie.js"
+    }
   ]
 } 

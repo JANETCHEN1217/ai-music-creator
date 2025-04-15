@@ -265,7 +265,7 @@ const Create = () => {
             if (!trackData.fileUrl) {
               console.log('生成的歌曲没有直接的URL，尝试使用API获取');
               // 如果没有直接的URL，尝试构建一个URL
-              trackData.fileUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${item.clipId || trackId}`;
+              trackData.fileUrl = item.audio_url || item.stream_audio_url;
             }
             
             console.log('Updated track data:', trackData);
@@ -273,7 +273,7 @@ const Create = () => {
             console.warn('响应中没有音乐项目，使用默认值');
             // 即使没有items，也要确保有最低限度的数据可以显示
             trackData.coverImage = `https://source.unsplash.com/random/300x300?music&${trackId}`;
-            trackData.fileUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${trackId}`;
+            trackData.fileUrl = item.audio_url || item.stream_audio_url;
           }
           
           // 更新生成的歌曲列表
@@ -351,9 +351,9 @@ const Create = () => {
       if (track.trackId) {
         // 优先尝试使用clipId构建URL
         if (track.clipId) {
-          fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.clipId}`;
+          fallbackUrl = track.audio_url || track.stream_audio_url;
         } else {
-          fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+          fallbackUrl = track.audio_url || track.stream_audio_url;
         }
         console.log('尝试使用备用URL:', fallbackUrl);
         
@@ -431,7 +431,7 @@ const Create = () => {
           
           // 尝试使用备用URL
           if (track.trackId && track.fileUrl !== `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`) {
-            const fallbackUrl = `https://dzwlai.com/apiuser/_open/suno/music/file?clipId=${track.trackId}`;
+            const fallbackUrl = track.audio_url || track.stream_audio_url;
             console.log('正在尝试备用URL:', fallbackUrl);
             
             // 更新当前track
