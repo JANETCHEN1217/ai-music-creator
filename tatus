@@ -1,0 +1,5 @@
+[33m45d61d0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Update: Migrate from Suno API to KIE AI API
+[33me05081e[m Initial commit: AI Music Generation App with KIE API integration
+[33ma08188d[m 修复音频和图片URL字段匹配问题: 1.增加对clid2AudioUrl和clid2ImageUrl的支持 2.改进URL构建逻辑 3.增强URL格式处理
+[33m432e54c[m 全面修复音乐显示和播放问题: 1. 增强API响应处理 2. 添加备用URL构建 3. 增强播放器容错能力
+[33m052e215[m 添加详细日志检查API响应中是否包含音乐、歌词和封面数据

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   AppBar,
   Box,
@@ -14,10 +14,6 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import MusicService from '../services/musicService';
-
-const SUNO_API_URL = 'https://api.sunoapi.org/api';
-const SUNO_API_KEY = 'cd4c08a93be11e2d434a03705f11068f';
 
 const Navbar = () => {
   const { user, logout } = useUser();
@@ -50,19 +46,6 @@ const Navbar = () => {
     }
     handleClose();
   };
-
-  useEffect(() => {
-    const loadTags = async () => {
-      try {
-        const tags = await MusicService.getTags();
-        // 使用标签
-      } catch (error) {
-        console.error('Error loading tags:', error);
-      }
-    };
-
-    loadTags();
-  }, []);
 
   return (
     <AppBar position="sticky" sx={{ backgroundColor: '#111', boxShadow: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -149,14 +132,10 @@ const Navbar = () => {
                 </MenuItem>,
                 <MenuItem key="profile" component={RouterLink} to="/profile">Profile</MenuItem>,
                 <MenuItem key="settings">Settings</MenuItem>,
-                <MenuItem key="api-guide" component={RouterLink} to="/api-guide">API Configuration</MenuItem>,
                 <MenuItem key="logout" onClick={handleLogout}>Logout</MenuItem>
               ]
             ) : (
-              [
-                <MenuItem key="login" onClick={handleLogin}>Sign in with Google</MenuItem>,
-                <MenuItem key="api-guide" component={RouterLink} to="/api-guide">API Configuration</MenuItem>
-              ]
+              <MenuItem key="login" onClick={handleLogin}>Sign in with Google</MenuItem>
             )}
           </Menu>
         </Box>

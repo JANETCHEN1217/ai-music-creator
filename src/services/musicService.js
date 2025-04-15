@@ -26,8 +26,8 @@ class MusicService {
       }
       throw new Error(response.data.msg || 'Failed to generate music');
     } catch (error) {
-      console.error('Music generation failed:', error);
-      throw error;
+      console.error('Music generation failed:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.msg || error.message || 'Failed to generate music');
     }
   }
 
@@ -71,8 +71,8 @@ class MusicService {
       }
       throw new Error(response.data.msg || 'Failed to check status');
     } catch (error) {
-      console.error('Status check failed:', error);
-      throw error;
+      console.error('Status check failed:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.msg || error.message || 'Failed to check status');
     }
   }
 
@@ -97,8 +97,8 @@ class MusicService {
       }
       throw new Error(response.data.msg || 'Failed to fetch history');
     } catch (error) {
-      console.error('History fetch failed:', error);
-      throw error;
+      console.error('History fetch failed:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.msg || error.message || 'Failed to fetch history');
     }
   }
 }

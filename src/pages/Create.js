@@ -82,23 +82,14 @@ const Create = () => {
   const pollingInterval = useRef(null);
 
   useEffect(() => {
-    loadTags();
+    // 使用本地标签，不再从API获取
+    setAvailableTags({
+      Genre: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
+      Moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
+      Voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
+      Tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
+    });
   }, []);
-
-  const loadTags = async () => {
-    try {
-      const tags = await MusicService.getTags();
-      setAvailableTags({
-        Genre: tags.genres || [],
-        Moods: tags.moods || [],
-        Voices: tags.voices || [],
-        Tempos: tags.tempos || []
-      });
-    } catch (error) {
-      console.error('Error loading tags:', error);
-      setError('Failed to load music tags');
-    }
-  };
 
   const handleTagClick = (tag) => {
     if (songStyle.includes(tag)) {
