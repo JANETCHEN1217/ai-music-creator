@@ -1,293 +1,106 @@
 import axios from 'axios';
 
-// Get current domain as API base URL
-const isProduction = process.env.NODE_ENV === 'production';
-const currentDomain = isProduction ? window.location.origin : 'http://localhost:3000';
-
-// API base URL
-const API_URL = `${currentDomain}/api/suno`;
-
-// API configuration - Get Suno API credentials from environment variables
-const SUNO_API_URL = process.env.REACT_APP_SUNO_API_URL || 'https://dzwlai.com/apiuser'; 
-const SUNO_API_TOKEN = process.env.REACT_APP_SUNO_API_TOKEN || '';
-const SUNO_API_USERID = process.env.REACT_APP_SUNO_API_USERID || '';
-
-// API request method - Unified API call handling
-const callApi = async (method, path, data = null, params = {}) => {
-  // Build request URL and parameters
-  let url;
-  
-  // Use local proxy in development, Vercel proxy in production
-  if (isProduction) {
-    url = `${API_URL}?path=${path}`;
-    // Add other query parameters
-    Object.keys(params).forEach(key => {
-      url += `&${key}=${encodeURIComponent(params[key])}`;
-    });
-  } else {
-    // Local development environment directly calls Suno API - Use correct path format
-    url = `${SUNO_API_URL}/_open/suno/music/${path}`;
-    if (Object.keys(params).length > 0) {
-      const queryParams = new URLSearchParams(params);
-      url += `?${queryParams.toString()}`;
-    }
-  }
-
-  try {
-    // Get user-set API token from localStorage (if any)
-    const userApiToken = localStorage.getItem('sunoApiToken') || SUNO_API_TOKEN;
-    const userId = SUNO_API_USERID;
-    
-    if (!userApiToken) {
-      throw new Error('API token not set. Please configure API token in settings');
-    }
-    
-    if (!userId) {
-      throw new Error('User ID not set. Please configure user ID in settings');
-    }
-    
-    // Send request
-    const config = {
-      method,
-      url,
-      ...(data ? { data } : {}),
-      headers: {
-        'X-Token': userApiToken,
-        'X-UserId': userId
-      }
-    };
-    
-    console.log(`Sending API request: ${method.toUpperCase()} ${url}`);
-    if (data) console.log('Request data:', data);
-    
-    const response = await axios(config);
-    
-    // Validate response
-    if (!response.data || response.data.code !== 200) {
-      throw new Error(response.data?.msg || 'Request failed');
-    }
-    
-    return response.data;
-  } catch (error) {
-    // Detailed error handling
-    if (error.response) {
-      // API configuration error
-      if (error.response.status === 401 || error.response.status === 403) {
-        console.error('API authentication error: Invalid token or unauthorized');
-        throw new Error('Invalid API token or unauthorized. Please verify your API token and user ID.');
-      }
-      
-      // Method not allowed
-      if (error.response.status === 405) {
-        console.error('Request method not allowed:', method, url);
-        throw new Error('API request method not allowed. Please verify the API endpoint path.');
-      }
-      
-      // API parameter error
-      if (error.response.status === 400) {
-        console.error('Request parameter error:', error.response.data);
-        throw new Error(`API parameter error: ${error.response.data?.msg || 'Invalid request parameter format'}`);
-      }
-      
-      // Server internal error
-      if (error.response.status === 500) {
-        console.error('Server internal error:', error.response.data);
-        throw new Error(`Server error: ${error.response.data?.msg || 'Internal service error, please try again later'}`);
-      }
-      
-      // Other HTTP errors
-      const errorMsg = error.response.data?.msg || `Unknown error (${error.response.status})`;
-      console.error(`Server error (${error.response.status}):`, errorMsg);
-      throw new Error(`API error: ${errorMsg}`);
-    }
-    
-    // Network error
-    console.error(`API request failed (${path}):`, error.message);
-    throw error;
-  }
-};
+// API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 class MusicService {
   // Generate music
-  static async generateTrack({
-    mode,
-    description,
-    style,
-    lyrics,
-    isInstrumental = false,
-    duration = 30
-  }) {
+  async generateMusic(prompt, style = 'pop', title = '', customMode = false, instrumental = false) {
     try {
-      console.log('Starting music generation...');
+      const response = await axios.post(`${API_BASE_URL}/kie?path=generate`, {
+        prompt,
+        style,
+        title,
+        customMode,
+        instrumental,
+        model: 'default',
+        callBackUrl: '',
+        negativeTags: []
+      });
       
-      // Build request data
-      let requestData = {};
-      
-      if (mode === 'simple') {
-        // Inspiration mode
-        requestData = {
-          mvVersion: "chirp-v4",
-          inputType: "10",
-          makeInstrumental: isInstrumental === true ? "true" : "false", 
-          gptDescriptionPrompt: description || "A happy sunshine song",
-        };
-      } else {
-        // Custom mode
-        requestData = {
-          mvVersion: "chirp-v4",
-          inputType: "20",
-          makeInstrumental: isInstrumental === true ? "true" : "false",
-          prompt: lyrics || "",
-          tags: Array.isArray(style) ? style.join(',') : style,
-          title: (Array.isArray(style) ? style.join(' ') : style) || description || "My Song",
+      if (response.data.code === 200) {
+        return {
+          taskId: response.data.data.task_id,
+          status: 'pending'
         };
       }
-      
-      // Send API request
-      const response = await callApi('post', 'generate', requestData);
-      
-      console.log('Generation response:', response);
-      
-      return {
-        trackId: response.data?.taskBatchId || "",
-        items: response.data?.items || [],
-        status: 'pending'
-      };
+      throw new Error(response.data.msg || 'Failed to generate music');
     } catch (error) {
-      console.error('Music generation failed:', error.message);
-      throw new Error(`Unable to generate music: ${error.message}`);
+      console.error('Music generation failed:', error);
+      throw error;
     }
   }
 
-  // Check music generation status
-  static async checkGenerationStatus(trackId) {
+  // Check generation status
+  async checkStatus(taskId) {
     try {
-      if (!trackId) {
-        throw new Error('Task ID cannot be empty');
+      const response = await axios.get(`${API_BASE_URL}/kie?path=status&taskId=${taskId}`);
+      
+      if (response.data.code === 200) {
+        const { callbackType, data } = response.data.data;
+        
+        if (callbackType === 'complete') {
+          return {
+            status: 'completed',
+            taskId: response.data.data.task_id,
+            items: data.map(item => ({
+              id: item.id,
+              audioUrl: item.audio_url,
+              streamUrl: item.stream_audio_url,
+              imageUrl: item.image_url,
+              prompt: item.prompt,
+              model: item.model_name,
+              title: item.title,
+              tags: item.tags,
+              createTime: item.createTime,
+              duration: item.duration
+            }))
+          };
+        } else if (callbackType === 'processing') {
+          return {
+            status: 'processing',
+            taskId: response.data.data.task_id
+          };
+        } else {
+          return {
+            status: 'failed',
+            taskId: response.data.data.task_id,
+            error: response.data.msg
+          };
+        }
       }
+      throw new Error(response.data.msg || 'Failed to check status');
+    } catch (error) {
+      console.error('Status check failed:', error);
+      throw error;
+    }
+  }
+
+  // Get music history
+  async getHistory() {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/kie?path=history`);
       
-      console.log(`Checking music generation status, trackId: ${trackId}`);
-      
-      // Use query parameters for GET request
-      const params = { taskBatchId: trackId };
-      
-      // Send API request with GET method
-      const response = await callApi('get', 'status', null, params);
-      
-      console.log('Status query response:', response);
-      
-      // If there is no correct response structure, give a clearer error
-      if (!response.data) {
-        console.error('Status query response format error:', response);
-        throw new Error('Incorrect status data format returned by server');
+      if (response.data.code === 200) {
+        return response.data.data.map(item => ({
+          id: item.id,
+          audioUrl: item.audio_url,
+          streamUrl: item.stream_audio_url,
+          imageUrl: item.image_url,
+          prompt: item.prompt,
+          model: item.model_name,
+          title: item.title,
+          tags: item.tags,
+          createTime: item.createTime,
+          duration: item.duration
+        }));
       }
-      
-      // 打印详细的响应数据结构，帮助排查问题
-      console.log('Status data structure:', JSON.stringify(response.data, null, 2));
-      
-      // 统一化响应结构，确保客户端处理的一致性
-      const statusData = {
-        taskBatchId: trackId,
-        // 优先使用taskStatus，然后是status字段
-        taskStatus: response.data.taskStatus || response.data.status || "processing",
-        // 确保items数组存在，且内部每个项都有必要的字段
-        items: Array.isArray(response.data.items) ? response.data.items.map(item => ({
-          ...item,
-          // 进一步确保每个字段都存在
-          url: item.url || item.fileUrl || item.clid2AudioUrl || '',
-          imageUrl: item.imageUrl || item.coverUrl || item.clid2ImageUrl || '',
-          lyrics: item.lyrics || '',
-          duration: item.duration || 30
-        })) : [],
-        // 保留原始响应
-        rawResponse: response.data
-      };
-      
-      console.log('Normalized status data:', statusData);
-      return statusData;
+      throw new Error(response.data.msg || 'Failed to fetch history');
     } catch (error) {
-      console.error('Status check failed:', error.message);
-      throw new Error(`Unable to check music generation status: ${error.message}`);
-    }
-  }
-
-  // Generate lyrics
-  static async generateLyrics(prompt) {
-    try {
-      // Send API request
-      const response = await callApi('post', 'lyrics', { prompt });
-      
-      return {
-        lyric: response.data?.lyric || "",
-        title: response.data?.title || ""
-      };
-    } catch (error) {
-      console.error('Lyrics generation failed:', error.message);
-      throw new Error(`Unable to generate lyrics: ${error.message}`);
-    }
-  }
-
-  // Separate vocals and instrumental
-  static async separateVocalAndInstrumental(clipId) {
-    try {
-      // Send API request
-      const response = await callApi('get', 'stems', null, { clipId });
-      
-      return {
-        taskBatchId: response.data?.taskBatchId || "",
-        items: response.data?.items || []
-      };
-    } catch (error) {
-      console.error('Vocal/instrumental separation failed:', error.message);
-      throw new Error(`Unable to separate vocals and instrumental: ${error.message}`);
-    }
-  }
-
-  // Get WAV file
-  static async getWavFile(clipId) {
-    try {
-      // Send API request
-      const response = await callApi('get', 'wav', null, { clipId });
-      
-      return {
-        taskBatchId: response.data?.taskBatchId || "",
-        items: response.data?.items || []
-      };
-    } catch (error) {
-      console.error('Failed to get WAV file:', error.message);
-      throw new Error(`Unable to get high-quality WAV file: ${error.message}`);
-    }
-  }
-
-  // Get music generation history
-  static async getMusicHistory() {
-    try {
-      // Send API request
-      const response = await callApi('get', 'list');
-      
-      return response.data?.items || [];
-    } catch (error) {
-      console.error('Failed to get music history:', error.message);
-      throw new Error(`Unable to get music generation history: ${error.message}`);
-    }
-  }
-
-  // Get available tags
-  static async getTags() {
-    try {
-      // In a real implementation, this would call the API
-      // For now, we'll return a hardcoded list of tags
-      return {
-        genres: ['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'R&B', 'Country', 'Folk', 'Blues', 'Reggae', 'Metal'],
-        moods: ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Peaceful', 'Angry', 'Mysterious'],
-        voices: ['Male', 'Female', 'Duet', 'Choir', 'Deep', 'High', 'Smooth', 'Raspy'],
-        tempos: ['Slow', 'Medium', 'Fast', 'Very Fast', 'Ballad', 'Dance', 'Groove']
-      };
-    } catch (error) {
-      console.error('Failed to get tags:', error.message);
-      throw new Error(`Unable to get music tags: ${error.message}`);
+      console.error('History fetch failed:', error);
+      throw error;
     }
   }
 }
 
-export default MusicService; 
+export default new MusicService(); 
