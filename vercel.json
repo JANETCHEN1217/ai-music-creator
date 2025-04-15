@@ -2,12 +2,12 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/proxy/(.*)",
-      "dest": "/api/proxy.js?path=$1"
+      "src": "/api/kie/(.*)",
+      "dest": "/api/kie.js?path=$1"
     },
     {
-      "src": "/api/proxy",
-      "dest": "/api/proxy.js"
+      "src": "/api/kie",
+      "dest": "/api/kie.js"
     },
     {
       "handle": "filesystem"
@@ -15,16 +15,6 @@
     {
       "src": "/(.*)",
       "dest": "/index.html"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/kie/(.*)",
-      "destination": "/api/kie.js?path=$1"
-    },
-    {
-      "source": "/api/kie",
-      "destination": "/api/kie.js"
     }
   ]
 } 
