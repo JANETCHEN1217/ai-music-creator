@@ -140,23 +140,23 @@ const Create = () => {
         setGenerationTime(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
 
-      const result = await MusicService.generateTrack({
-        mode: mode,
-        description: description || "Happy music",
-        style: songStyle.length > 0 ? songStyle : songTitle,
-        lyrics: songLyrics,
-        isInstrumental: isInstrumental,
-        duration: 30
-      });
+      // 使用新的 KIE API 格式
+      const result = await MusicService.generateMusic(
+        description || "Happy music",
+        songStyle.length > 0 ? songStyle.join(',') : 'pop',
+        songTitle,
+        mode === 'custom',
+        isInstrumental
+      );
 
       clearInterval(timer);
       
       console.log('Generation result:', result);
       
-      if (result.trackId) {
+      if (result.taskId) {
         // Create a placeholder track
         const placeholderTrack = {
-          trackId: result.trackId,
+          taskId: result.taskId,
           title: songTitle || description || 'New Track',
           status: 'pending',
           coverImage: `https://source.unsplash.com/random/300x300?music&${Date.now()}`,
@@ -167,9 +167,9 @@ const Create = () => {
         setGeneratedTracks(prev => [placeholderTrack, ...prev]);
         
         // Start polling for status
-        startStatusPolling(result.trackId);
+        startStatusPolling(result.taskId);
       } else {
-        throw new Error('No trackId returned from generation');
+        throw new Error('No taskId returned from generation');
       }
       
       setSuccess(true);
@@ -182,8 +182,8 @@ const Create = () => {
   };
   
   // Start polling for track status
-  const startStatusPolling = (trackId) => {
-    console.log('Starting status polling for trackId:', trackId);
+  const startStatusPolling = (taskId) => {
+    console.log('Starting status polling for taskId:', taskId);
     
     // Clear existing polling interval if any
     if (pollingInterval.current) {
@@ -193,145 +193,49 @@ const Create = () => {
     // Define the polling function
     const pollStatus = async () => {
       try {
-        console.log('Polling status for trackId:', trackId);
-        const status = await MusicService.checkGenerationStatus(trackId);
+        console.log('Polling status for taskId:', taskId);
+        const status = await MusicService.checkStatus(taskId);
         console.log('Status response:', status);
-        
-        // 更详细的日志输出，帮助排查问题
-        console.log('Task status:', status.taskStatus);
-        console.log('Items array:', status.items);
-        
-        // 增加详细的响应内容检查
-        if (status.rawResponse) {
-          console.log('===== 原始响应数据详情 =====');
-          console.log('原始响应对象结构:', Object.keys(status.rawResponse));
-          console.log('完整响应:', JSON.stringify(status.rawResponse, null, 2));
-          
-          const items = status.items || [];
-          if (items.length > 0) {
-            console.log('第一个音乐项详情:');
-            const item = items[0];
-            console.log('- 项目字段:', Object.keys(item));
-            console.log('- 音频URL存在?', Boolean(item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl));
-            console.log('- 具体URL:', item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl);
-            console.log('- 封面图片存在?', Boolean(item.imageUrl || item.coverUrl || item.coverImageUrl || item.clid2ImageUrl));
-            console.log('- 歌词存在?', Boolean(item.lyrics));
-          } else {
-            console.log('响应中没有音乐项目');
-          }
-        }
-        
-        // 使用多种可能的状态名称，确保能够正确识别完成状态
-        const isCompleted = status.taskStatus === 'success' || 
-                            status.taskStatus === 'complete' || 
-                            status.status === 'success' || 
-                            status.status === 'complete';
-                            
-        if (isCompleted) {
-          // 歌曲生成成功完成
-          console.log('音乐生成完成!');
-          clearInterval(pollingInterval.current);
-          
-          // 提取歌曲数据
-          let trackData = {
-            trackId: trackId,
-            title: songTitle || description || '我的歌曲',
-            status: 'completed',
-          };
-          
-          // 处理items数组，获取音频URL、封面图片等
-          if (status.items && status.items.length > 0) {
-            const item = status.items[0]; // 获取第一首歌
-            console.log('Processing music item:', item);
-            
-            // 提取重要字段
-            const clipId = item.clipId || '';
-            // 尝试从多个可能的字段中获取URL
-            const fileUrl = item.url || item.fileUrl || item.mp3Url || item.clid2AudioUrl || '';
-            // 尝试从多个可能的字段中获取封面图片
-            const coverImage = item.imageUrl || item.coverUrl || item.coverImageUrl || item.clid2ImageUrl || 
-                              `https://source.unsplash.com/random/300x300?music&${trackId}`;
-            
-            trackData = {
-              ...trackData,
-              clipId, // 保存clipId，用于构建备用URL
-              fileUrl,
-              coverImage,
-              lyrics: item.lyrics || '没有歌词',
-              duration: item.duration || 30
-            };
-            
-            // 强制为fileUrl设置一个值，确保播放器可以工作
-            if (!trackData.fileUrl) {
-              console.log('生成的歌曲没有直接的URL，尝试使用API获取');
-              // 如果没有直接的URL，尝试构建一个URL
-              trackData.fileUrl = item.audio_url || item.stream_audio_url;
-            }
-            
-            console.log('Updated track data:', trackData);
-          } else {
-            console.warn('响应中没有音乐项目，使用默认值');
-            // 即使没有items，也要确保有最低限度的数据可以显示
-            trackData.coverImage = `https://source.unsplash.com/random/300x300?music&${trackId}`;
-            trackData.fileUrl = item.audio_url || item.stream_audio_url;
-          }
-          
-          // 更新生成的歌曲列表
-          setGeneratedTracks(prev => {
-            const updated = [...prev];
-            const index = updated.findIndex(t => t.trackId === trackId);
-            
-            if (index !== -1) {
-              updated[index] = { ...updated[index], ...trackData };
-              console.log('Updated track in list:', updated[index]);
-            } else {
-              console.warn('Track not found in list, adding new one');
-              updated.push(trackData);
-            }
-            
-            return updated;
-          });
-          
-          // 如果有URL，自动播放新生成的歌曲
-          if (trackData.fileUrl) {
-            const updatedTrack = { ...trackData };
-            setCurrentTrack(updatedTrack);
-            playTrack(updatedTrack);
-          } else {
-            console.error('Track completed but no file URL available');
-            setError('歌曲生成成功，但没有可用的音频URL。请联系支持。');
-          }
-        } 
-        else if (status.taskStatus === 'failed' || status.status === 'failed') {
-          // 生成失败
-          clearInterval(pollingInterval.current);
-          setError('音乐生成失败，请再试一次。');
-          
-          // 更新歌曲状态
-          setGeneratedTracks(prev => {
-            const updated = [...prev];
-            const index = updated.findIndex(t => t.trackId === trackId);
-            
-            if (index !== -1) {
-              updated[index] = { 
-                ...updated[index], 
-                status: 'failed' 
+
+        if (status.status === 'completed') {
+          // Update the track in generatedTracks
+          setGeneratedTracks(prev => prev.map(track => {
+            if (track.taskId === taskId) {
+              const completedTrack = status.items[0]; // Get first completed track
+              return {
+                ...track,
+                status: 'completed',
+                fileUrl: completedTrack.audioUrl,
+                streamUrl: completedTrack.streamUrl,
+                coverImage: completedTrack.imageUrl,
+                duration: completedTrack.duration,
+                lyrics: completedTrack.lyrics
               };
             }
-            
-            return updated;
-          });
+            return track;
+          }));
+          
+          // Clear polling interval
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        } else if (status.status === 'failed') {
+          setError(`Generation failed: ${status.error || 'Unknown error'}`);
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
         }
-        // 其他状态(processing, pending)继续轮询
+        // If status is 'processing', continue polling
       } catch (error) {
-        console.error('Error polling status:', error);
-        // 不清除轮询，下次再试
+        console.error('Status check failed:', error);
+        setError('Failed to check generation status');
+        clearInterval(pollingInterval.current);
+        pollingInterval.current = null;
       }
     };
     
-    // Poll immediately and then every 3 seconds
+    // Start polling every 5 seconds
+    pollingInterval.current = setInterval(pollStatus, 5000);
+    // Immediate first check
     pollStatus();
-    pollingInterval.current = setInterval(pollStatus, 3000);
   };
   
   // Playing a track
